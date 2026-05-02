@@ -64,10 +64,17 @@ export default function DashboardPage() {
     enabled: !!riotAccount,
   })
 
+  const [syncMessage, setSyncMessage] = useState('')
   const syncMutation = useMutation({
     mutationFn: syncMatches,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-matches'] })
+      setSyncMessage('Sync queued! Matches may take a moment to appear.')
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      setTimeout(() => setSyncMessage(''), 5000)
+    },
+    onError: (err: { response?: { data?: { error?: string } } }) => {
+      setSyncMessage(err?.response?.data?.error ?? 'Sync failed')
+      setTimeout(() => setSyncMessage(''), 5000)
     },
   })
 
@@ -116,22 +123,27 @@ export default function DashboardPage() {
           <p className="text-muted text-sm mt-0.5">{me?.email}</p>
         </div>
         {riotAccount && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
-              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white border border-border hover:border-gold/40 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-50"
-              title="Sync recent matches"
-            >
-              <RefreshCw size={12} className={syncMutation.isPending ? 'animate-spin' : ''} />
-              {syncMutation.isPending ? 'Syncing…' : 'Sync matches'}
-            </button>
-            <button
-              onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
-              className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline"
-            >
-              View profile <ExternalLink size={13} />
-            </button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white border border-border hover:border-gold/40 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-50"
+                title="Sync recent matches"
+              >
+                <RefreshCw size={12} className={syncMutation.isPending ? 'animate-spin' : ''} />
+                {syncMutation.isPending ? 'Syncing…' : 'Sync'}
+              </button>
+              <button
+                onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
+                className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline"
+              >
+                View profile <ExternalLink size={13} />
+              </button>
+            </div>
+            {syncMessage && (
+              <p className="text-[11px] text-muted max-w-48 text-right">{syncMessage}</p>
+            )}
           </div>
         )}
       </div>

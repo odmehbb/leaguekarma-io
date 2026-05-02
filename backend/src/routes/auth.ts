@@ -153,6 +153,15 @@ export async function authRoutes(app: FastifyInstance) {
     })
     if (!account) return reply.code(400).send({ error: 'No linked Riot account' })
 
+    // Cooldown: 5 minutes between manual syncs
+    if (account.lastSyncedAt) {
+      const msSinceSync = Date.now() - account.lastSyncedAt.getTime()
+      if (msSinceSync < 5 * 60 * 1000) {
+        const secondsLeft = Math.ceil((5 * 60 * 1000 - msSinceSync) / 1000)
+        return reply.code(429).send({ error: `Sync on cooldown. Try again in ${secondsLeft}s.` })
+      }
+    }
+
     await syncMatchesQueue.add('sync', {
       riotAccountId: account.id,
       puuid: account.puuid,
