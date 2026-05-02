@@ -32,6 +32,7 @@ export async function playerRoutes(app: FastifyInstance) {
       return reply.send({
         gameName,
         tagLine,
+        notFound: true,
         registered: false,
         tagCounts: {},
         reviewCount: 0,

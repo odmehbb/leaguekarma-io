@@ -353,15 +353,25 @@ export default function MatchCard({ match, myPuuid }: Props) {
                 const teammates = [...team1, ...team2].filter((pt) => pt.puuid !== myPuuid)
                 const reviewed = teammates.filter((pt) => reviewsByPuuid.has(pt.puuid)).length
                 if (teammates.length === 0) return null
+                const allDone = reviewed === teammates.length && reviewed > 0
                 return (
-                  <div className="sm:col-span-2 mb-3 flex items-center gap-2 text-xs text-muted">
-                    <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gold/50 rounded-full transition-all"
-                        style={{ width: `${(reviewed / teammates.length) * 100}%` }}
-                      />
-                    </div>
-                    <span>{reviewed}/{teammates.length} reviewed</span>
+                  <div className={cn('sm:col-span-2 mb-3 flex items-center gap-2 text-xs', allDone ? 'text-positive' : 'text-muted')}>
+                    {allDone ? (
+                      <>
+                        <Check size={12} className="shrink-0" />
+                        <span>All teammates reviewed</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gold/50 rounded-full transition-all"
+                            style={{ width: `${(reviewed / teammates.length) * 100}%` }}
+                          />
+                        </div>
+                        <span className="shrink-0">{reviewed}/{teammates.length} reviewed</span>
+                      </>
+                    )}
                   </div>
                 )
               })()}

@@ -8,7 +8,7 @@ import MatchCard, { type MatchData } from '../components/MatchCard'
 import { Card, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
-import { TAG_LABELS, POSITIVE_TAGS, timeAgo } from '../lib/utils'
+import { TAG_LABELS, POSITIVE_TAGS, timeAgo, championIconUrl } from '../lib/utils'
 
 const TIER_COLORS: Record<string, string> = {
   IRON: '#a1a1aa', BRONZE: '#b45309', SILVER: '#94a3b8',
@@ -124,6 +124,21 @@ export default function PlayerPage() {
     )
   }
 
+  if (profile?.notFound) {
+    return (
+      <div className="space-y-6">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-white transition-colors">
+          <ArrowLeft size={14} /> Search
+        </Link>
+        <div className="text-center py-20">
+          <p className="text-4xl font-bold text-white mb-3">{gameName}<span className="text-muted font-normal">#{tagLine}</span></p>
+          <p className="text-muted">This player hasn't appeared in any synced matches yet.</p>
+          <p className="text-muted text-sm mt-1">Once they play a game with a registered user, their profile will appear here.</p>
+        </div>
+      </div>
+    )
+  }
+
   const myPuuid = me?.riotAccount?.puuid
   const isSelf = myPuuid && profile?.account?.puuid === myPuuid
 
@@ -233,6 +248,47 @@ export default function PlayerPage() {
           </div>
         </div>
       )}
+
+      {/* Champion stats */}
+      {matches && matches.length >= 3 && (() => {
+        const champStats: Record<string, { games: number; wins: number }> = {}
+        for (const m of matches) {
+          const p = (m as MatchData & { participant?: { championName: string; win: boolean } }).participant
+          if (!p) continue
+          if (!champStats[p.championName]) champStats[p.championName] = { games: 0, wins: 0 }
+          champStats[p.championName].games++
+          if (p.win) champStats[p.championName].wins++
+        }
+        const sorted = Object.entries(champStats).sort(([, a], [, b]) => b.games - a.games).slice(0, 5)
+        if (sorted.length < 2) return null
+        return (
+          <div>
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Recent Champions</h2>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex flex-wrap gap-4">
+                  {sorted.map(([champ, stats]) => {
+                    const wr = Math.round((stats.wins / stats.games) * 100)
+                    return (
+                      <div key={champ} className="flex items-center gap-2">
+                        <img
+                          src={championIconUrl(champ)}
+                          alt={champ}
+                          className="w-9 h-9 rounded-md shrink-0"
+                        />
+                        <div>
+                          <p className="text-xs text-white font-medium">{champ}</p>
+                          <p className="text-[11px] text-muted">{stats.games}g · <span className={wr >= 50 ? 'text-positive' : 'text-negative'}>{wr}%</span> WR</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      })()}
 
       {/* Recent matches */}
       {matches && matches.length > 0 && (

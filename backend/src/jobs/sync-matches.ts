@@ -57,6 +57,17 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
       let soloTier: string | null = account?.soloTier ?? null
       let soloRank: string | null = account?.soloRank ?? null
 
+      // Check if we've seen this PUUID before in any prior match — reuse cached data
+      if (!gameName || !tagLine || !soloTier) {
+        const cachedParticipant = await db.query.matchParticipants.findFirst({
+          where: eq(matchParticipants.puuid, p.puuid),
+        })
+        if (cachedParticipant?.gameName) gameName = gameName ?? cachedParticipant.gameName
+        if (cachedParticipant?.tagLine) tagLine = tagLine ?? cachedParticipant.tagLine
+        if (cachedParticipant?.soloTier) soloTier = soloTier ?? cachedParticipant.soloTier
+        if (cachedParticipant?.soloRank) soloRank = soloRank ?? cachedParticipant.soloRank
+      }
+
       if (!gameName || !tagLine) {
         try {
           const riotId = await getAccountByPuuid(p.puuid)
