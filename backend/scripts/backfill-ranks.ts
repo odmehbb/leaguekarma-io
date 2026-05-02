@@ -3,7 +3,7 @@ dotenv.config()
 
 import { db } from '../src/db/index.js'
 import { matchParticipants } from '../src/db/schema.js'
-import { getSummonerByPuuid, getLeagueEntries } from '../src/services/riot.js'
+import { getLeagueEntriesByPuuid } from '../src/services/riot.js'
 import { isNull, sql } from 'drizzle-orm'
 
 // Get distinct puuids that have a tagLine but no rank yet
@@ -20,14 +20,7 @@ for (let i = 0; i < withTag.length; i++) {
   const row = withTag[i]
   if (i % 10 === 0) console.log(`  Progress: ${i}/${withTag.length} (${ok} ranked, ${fail} failed)`)
   try {
-    const summoner = await getSummonerByPuuid(row.puuid, row.tagLine!)
-    if (!summoner.id) {
-      console.error(`  No summoner ID for ${row.puuid} — skipping`)
-      fail++
-      await new Promise(r => setTimeout(r, 2600))
-      continue
-    }
-    const entries = await getLeagueEntries(summoner.id, row.tagLine!)
+    const entries = await getLeagueEntriesByPuuid(row.puuid, row.tagLine!)
     const solo = entries.find(e => e.queueType === 'RANKED_SOLO_5x5')
     if (solo) {
       await db
@@ -38,11 +31,11 @@ for (let i = 0; i < withTag.length; i++) {
     } else {
       fail++ // unranked, not an error
     }
-    await new Promise(r => setTimeout(r, 2600))
+    await new Promise(r => setTimeout(r, 1400))
   } catch (err) {
     console.error(`  Failed for ${row.puuid}: ${(err as Error).message}`)
     fail++
-    await new Promise(r => setTimeout(r, 2600))
+    await new Promise(r => setTimeout(r, 1400))
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq'
 import { db } from '../db/index.js'
 import { matches, matchParticipants, riotAccounts } from '../db/schema.js'
-import { getMatchIdsByPuuid, getMatch, getAccountByPuuid, getSummonerByPuuid, getLeagueEntries } from '../services/riot.js'
+import { getMatchIdsByPuuid, getMatch, getAccountByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 export interface SyncMatchesJobData {
@@ -80,8 +80,7 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
 
       if (!soloTier && tagLine) {
         try {
-          const summoner = await getSummonerByPuuid(p.puuid, tagLine)
-          const entries = await getLeagueEntries(summoner.id, tagLine)
+          const entries = await getLeagueEntriesByPuuid(p.puuid, tagLine)
           const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5')
           soloTier = solo?.tier ?? null
           soloRank = solo?.rank ?? null

@@ -7,7 +7,7 @@ import { config } from '../config.js'
 import { redis } from '../redis/index.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { syncMatchesQueue } from '../jobs/queue.js'
-import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntries } from '../services/riot.js'
+import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 const google = new Google(
@@ -92,8 +92,10 @@ export async function authRoutes(app: FastifyInstance) {
       .parse(req.body)
 
     const riotAccount = await getAccountByRiotId(gameName, tagLine)
-    const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine)
-    const entries = await getLeagueEntries(summoner.id, tagLine)
+    // Fetch summoner data (profileIconId, summonerLevel) — id may be absent on newer accounts
+    const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine).catch(() => null)
+    // Use direct PUUID endpoint for league entries (no longer need encrypted summoner ID)
+    const entries = await getLeagueEntriesByPuuid(riotAccount.puuid, tagLine).catch(() => [])
     const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5') ?? null
 
     const existing = await db.query.riotAccounts.findFirst({
@@ -109,9 +111,9 @@ export async function authRoutes(app: FastifyInstance) {
         puuid: riotAccount.puuid,
         gameName: riotAccount.gameName,
         tagLine: riotAccount.tagLine,
-        summonerId: summoner.id,
-        profileIconId: summoner.profileIconId,
-        summonerLevel: summoner.summonerLevel,
+        summonerId: summoner?.id ?? null,
+        profileIconId: summoner?.profileIconId ?? null,
+        summonerLevel: summoner?.summonerLevel ?? null,
         soloTier: solo?.tier ?? null,
         soloRank: solo?.rank ?? null,
         soloLp: solo?.leaguePoints ?? null,
@@ -124,9 +126,9 @@ export async function authRoutes(app: FastifyInstance) {
           puuid: riotAccount.puuid,
           gameName: riotAccount.gameName,
           tagLine: riotAccount.tagLine,
-          summonerId: summoner.id,
-          profileIconId: summoner.profileIconId,
-          summonerLevel: summoner.summonerLevel,
+          summonerId: summoner?.id ?? null,
+          profileIconId: summoner?.profileIconId ?? null,
+          summonerLevel: summoner?.summonerLevel ?? null,
           soloTier: solo?.tier ?? null,
           soloRank: solo?.rank ?? null,
           soloLp: solo?.leaguePoints ?? null,
