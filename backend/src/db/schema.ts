@@ -30,6 +30,11 @@ export const riotAccounts = pgTable('riot_accounts', {
   summonerId: text('summoner_id'),
   profileIconId: integer('profile_icon_id'),
   summonerLevel: integer('summoner_level'),
+  soloTier: text('solo_tier'),
+  soloRank: text('solo_rank'),
+  soloLp: integer('solo_lp'),
+  soloWins: integer('solo_wins'),
+  soloLosses: integer('solo_losses'),
   lastSyncedAt: timestamp('last_synced_at'),
 })
 
@@ -55,6 +60,8 @@ export const matchParticipants = pgTable(
     }),
     gameName: text('game_name'),
     tagLine: text('tag_line'),
+    soloTier: text('solo_tier'),
+    soloRank: text('solo_rank'),
     championName: text('champion_name').notNull(),
     teamId: integer('team_id').notNull(),
     win: boolean('win').notNull(),

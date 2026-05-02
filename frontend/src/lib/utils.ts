@@ -5,6 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  TOP: 'Top',
+  JUNGLE: 'Jungle',
+  MIDDLE: 'Mid',
+  BOTTOM: 'Bot',
+  UTILITY: 'Support',
+}
+export function roleLabel(role: string | null | undefined): string | null {
+  if (!role) return null
+  return ROLE_LABELS[role.toUpperCase()] ?? role
+}
+
+// Data Dragon champion icons — version bumps ~every 2 weeks with patches
+const DDRAGON_VERSION = '16.9.1'
+export function championIconUrl(championName: string) {
+  return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${championName}.png`
+}
+
 export const POSITIVE_TAGS = [
   'great-comms',
   'good-shotcaller',

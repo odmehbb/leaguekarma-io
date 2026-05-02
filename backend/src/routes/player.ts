@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { db } from '../db/index.js'
 import { matches, matchParticipants, reviews, riotAccounts } from '../db/schema.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { eq, and, inArray, sql, ilike, desc } from 'drizzle-orm'
 
 export async function playerRoutes(app: FastifyInstance) {
   // GET /api/player/:gameName/:tagLine — public karma profile
@@ -16,8 +16,17 @@ export async function playerRoutes(app: FastifyInstance) {
       ),
     })
 
-    // Aggregate tags from all reviews where this player is the subject
-    const subjectPuuid = account?.puuid
+    // Fall back to matchParticipants to find PUUID for unregistered players
+    let subjectPuuid = account?.puuid
+    if (!subjectPuuid) {
+      const participant = await db.query.matchParticipants.findFirst({
+        where: and(
+          ilike(matchParticipants.gameName, gameName),
+          ilike(matchParticipants.tagLine, tagLine)
+        ),
+      })
+      subjectPuuid = participant?.puuid ?? undefined
+    }
 
     if (!subjectPuuid) {
       return reply.send({
@@ -49,6 +58,42 @@ export async function playerRoutes(app: FastifyInstance) {
       tagCounts,
       reviewCount: allReviews.length,
     })
+  })
+
+  // GET /api/player/:gameName/:tagLine/public-reviews — anonymized reviews with notes
+  app.get('/:gameName/:tagLine/public-reviews', async (req, reply) => {
+    const { gameName, tagLine } = req.params as { gameName: string; tagLine: string }
+
+    const account = await db.query.riotAccounts.findFirst({
+      where: and(eq(riotAccounts.gameName, gameName), eq(riotAccounts.tagLine, tagLine)),
+    })
+
+    let subjectPuuid = account?.puuid
+    if (!subjectPuuid) {
+      const participant = await db.query.matchParticipants.findFirst({
+        where: and(
+          ilike(matchParticipants.gameName, gameName),
+          ilike(matchParticipants.tagLine, tagLine)
+        ),
+      })
+      subjectPuuid = participant?.puuid ?? undefined
+    }
+
+    if (!subjectPuuid) return reply.send([])
+
+    const recentReviews = await db.query.reviews.findMany({
+      where: eq(reviews.subjectPuuid, subjectPuuid),
+      orderBy: [desc(reviews.createdAt)],
+      limit: 20,
+    })
+
+    reply.send(
+      recentReviews.map((r) => ({
+        tags: r.tags,
+        note: r.note,
+        createdAt: r.createdAt,
+      }))
+    )
   })
 
   // GET /api/player/:gameName/:tagLine/matches

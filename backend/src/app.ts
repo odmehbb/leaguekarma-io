@@ -11,6 +11,8 @@ import { playerRoutes } from './routes/player.js'
 import { reviewRoutes } from './routes/review.js'
 import { matchRoutes } from './routes/match.js'
 import { rankingsRoutes } from './routes/rankings.js'
+import { statsRoutes } from './routes/stats.js'
+import { activityRoutes } from './routes/activity.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -35,6 +37,8 @@ export async function buildApp() {
   await app.register(reviewRoutes, { prefix: '/api/player' })
   await app.register(matchRoutes, { prefix: '/api/match' })
   await app.register(rankingsRoutes, { prefix: '/api/rankings' })
+  await app.register(statsRoutes, { prefix: '/api/stats' })
+  await app.register(activityRoutes, { prefix: '/api/activity' })
 
   // Health check
   app.get('/health', async () => ({ status: 'ok' }))

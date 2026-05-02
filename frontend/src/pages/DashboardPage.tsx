@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getMe, linkRiot, getPlayerMatches, getPlayerProfile } from '../lib/api'
+import { getMe, linkRiot, getPlayerMatches, getPlayerProfile, getReviewsGiven, syncMatches } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import MatchCard, { type MatchData } from '../components/MatchCard'
 import KarmaSummary from '../components/KarmaSummary'
@@ -9,7 +9,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react'
+import { TAG_LABELS, POSITIVE_TAGS, timeAgo } from '../lib/utils'
+
+const TIER_HEX: Record<string, string> = {
+  IRON: '#a1a1aa', BRONZE: '#b45309', SILVER: '#94a3b8',
+  GOLD: '#facc15', PLATINUM: '#2dd4bf', EMERALD: '#34d399',
+  DIAMOND: '#60a5fa', MASTER: '#c084fc', GRANDMASTER: '#fb7185', CHALLENGER: '#7dd3fc',
+}
+function tierColor(tier: string) { return TIER_HEX[tier] ?? '#8899BB' }
+
+const POSITIVE_TAG_SET = new Set(POSITIVE_TAGS as readonly string[])
+
+type ReviewGiven = {
+  id: string
+  subjectPuuid: string
+  subjectGameName: string | null
+  subjectTagLine: string | null
+  tags: string[]
+  note: string | null
+  createdAt: string
+}
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth()
@@ -36,6 +56,19 @@ export default function DashboardPage() {
     queryKey: ['player', riotAccount?.gameName, riotAccount?.tagLine],
     queryFn: () => getPlayerProfile(riotAccount!.gameName, riotAccount!.tagLine),
     enabled: !!riotAccount,
+  })
+
+  const { data: reviewsGiven } = useQuery({
+    queryKey: ['reviews-given'],
+    queryFn: getReviewsGiven,
+    enabled: !!riotAccount,
+  })
+
+  const syncMutation = useMutation({
+    mutationFn: syncMatches,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-matches'] })
+    },
   })
 
   const linkMutation = useMutation({
@@ -68,6 +101,12 @@ export default function DashboardPage() {
     )
   }
 
+  const topTags = myProfile?.tagCounts
+    ? Object.entries(myProfile.tagCounts as Record<string, number>)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+    : []
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -77,12 +116,23 @@ export default function DashboardPage() {
           <p className="text-muted text-sm mt-0.5">{me?.email}</p>
         </div>
         {riotAccount && (
-          <button
-            onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
-            className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline"
-          >
-            View profile <ExternalLink size={13} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white border border-border hover:border-gold/40 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-50"
+              title="Sync recent matches"
+            >
+              <RefreshCw size={12} className={syncMutation.isPending ? 'animate-spin' : ''} />
+              {syncMutation.isPending ? 'Syncing…' : 'Sync matches'}
+            </button>
+            <button
+              onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
+              className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline"
+            >
+              View profile <ExternalLink size={13} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -122,26 +172,33 @@ export default function DashboardPage() {
                 <span className="text-muted font-normal">#{riotAccount.tagLine}</span>
               </p>
               <p className="text-muted text-sm mt-0.5">Level {riotAccount.summonerLevel}</p>
+              {riotAccount.soloTier && (
+                <p className="text-sm font-semibold mt-1" style={{ color: tierColor(riotAccount.soloTier) }}>
+                  {riotAccount.soloTier.charAt(0) + riotAccount.soloTier.slice(1).toLowerCase()} {riotAccount.soloRank} · {riotAccount.soloLp} LP
+                </p>
+              )}
+              {riotAccount.lastSyncedAt && (
+                <p className="text-xs text-muted mt-2">
+                  Last synced {timeAgo(riotAccount.lastSyncedAt)}
+                </p>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-5">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Your Karma</p>
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Your Reputation</p>
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-bold text-white">{myProfile?.reviewCount ?? 0}</span>
                 <span className="text-muted text-sm">reviews received</span>
               </div>
-              {myProfile?.reviewCount > 0 && (
+              {topTags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
-                  {Object.entries(myProfile.tagCounts as Record<string, number>)
-                    .sort(([, a], [, b]) => b - a)
-                    .slice(0, 3)
-                    .map(([tag, count]) => (
-                      <Badge key={tag} variant="neutral">
-                        {tag} · {count}
-                      </Badge>
-                    ))}
+                  {topTags.map(([tag, count]) => (
+                    <Badge key={tag} variant="neutral">
+                      {TAG_LABELS[tag] ?? tag} · {count}
+                    </Badge>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -150,7 +207,7 @@ export default function DashboardPage() {
       )}
 
       {/* Own karma summary */}
-      {riotAccount && myProfile?.reviewCount > 0 && (
+      {riotAccount && (myProfile?.reviewCount ?? 0) > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Your Reputation</h2>
           <Card>
@@ -158,6 +215,62 @@ export default function DashboardPage() {
               <KarmaSummary tagCounts={myProfile?.tagCounts ?? {}} />
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Reviews I've given */}
+      {reviewsGiven && reviewsGiven.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
+            Reviews You've Given
+            <span className="text-muted font-normal normal-case ml-2 text-xs">— {reviewsGiven.length} total</span>
+          </h2>
+          <div className="space-y-2">
+            {reviewsGiven.slice(0, 10).map((r: ReviewGiven) => {
+              const isPositive = r.tags.some((t: string) => POSITIVE_TAG_SET.has(t))
+              const profilePath = r.subjectGameName && r.subjectTagLine
+                ? `/player/${encodeURIComponent(r.subjectGameName)}/${encodeURIComponent(r.subjectTagLine)}`
+                : null
+              return (
+                <div
+                  key={r.id}
+                  className="flex items-start gap-3 py-2.5 px-3 rounded-lg border border-border bg-surface/50"
+                >
+                  <div className={`mt-0.5 shrink-0 ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                    {isPositive ? <ThumbsUp size={13} /> : <ThumbsDown size={13} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {profilePath ? (
+                      <Link
+                        to={profilePath}
+                        className="text-xs font-semibold text-white hover:text-gold transition-colors truncate block"
+                      >
+                        {r.subjectGameName}
+                        <span className="text-muted font-normal">#{r.subjectTagLine}</span>
+                      </Link>
+                    ) : (
+                      <span className="text-xs font-semibold text-white">Unknown player</span>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {r.tags.slice(0, 3).map((tag: string) => (
+                        <Badge
+                          key={tag}
+                          variant={POSITIVE_TAG_SET.has(tag) ? 'positive' : 'negative'}
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {TAG_LABELS[tag] ?? tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    {r.note && (
+                      <p className="text-[11px] text-muted italic mt-1 truncate">"{r.note}"</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted shrink-0 mt-0.5">{timeAgo(r.createdAt)}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

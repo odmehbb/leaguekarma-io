@@ -7,7 +7,7 @@ import { config } from '../config.js'
 import { redis } from '../redis/index.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { syncMatchesQueue } from '../jobs/queue.js'
-import { getAccountByRiotId, getSummonerByPuuid } from '../services/riot.js'
+import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntries } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 const google = new Google(
@@ -93,6 +93,8 @@ export async function authRoutes(app: FastifyInstance) {
 
     const riotAccount = await getAccountByRiotId(gameName, tagLine)
     const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine)
+    const entries = await getLeagueEntries(summoner.id, tagLine)
+    const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5') ?? null
 
     const existing = await db.query.riotAccounts.findFirst({
       where: eq(riotAccounts.userId, userId),
@@ -110,6 +112,11 @@ export async function authRoutes(app: FastifyInstance) {
         summonerId: summoner.id,
         profileIconId: summoner.profileIconId,
         summonerLevel: summoner.summonerLevel,
+        soloTier: solo?.tier ?? null,
+        soloRank: solo?.rank ?? null,
+        soloLp: solo?.leaguePoints ?? null,
+        soloWins: solo?.wins ?? null,
+        soloLosses: solo?.losses ?? null,
       })
       .onConflictDoUpdate({
         target: riotAccounts.userId,
@@ -120,6 +127,11 @@ export async function authRoutes(app: FastifyInstance) {
           summonerId: summoner.id,
           profileIconId: summoner.profileIconId,
           summonerLevel: summoner.summonerLevel,
+          soloTier: solo?.tier ?? null,
+          soloRank: solo?.rank ?? null,
+          soloLp: solo?.leaguePoints ?? null,
+          soloWins: solo?.wins ?? null,
+          soloLosses: solo?.losses ?? null,
         },
       })
       .returning()
@@ -131,6 +143,23 @@ export async function authRoutes(app: FastifyInstance) {
     })
 
     reply.send(account)
+  })
+
+  // POST /api/auth/sync — manually trigger match sync for current user
+  app.post('/sync', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as { userId: string }
+    const account = await db.query.riotAccounts.findFirst({
+      where: eq(riotAccounts.userId, userId),
+    })
+    if (!account) return reply.code(400).send({ error: 'No linked Riot account' })
+
+    await syncMatchesQueue.add('sync', {
+      riotAccountId: account.id,
+      puuid: account.puuid,
+      isFirstSync: false,
+    })
+
+    reply.send({ ok: true })
   })
 
   // POST /api/auth/logout

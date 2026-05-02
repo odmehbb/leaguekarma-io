@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq'
 import { db } from '../db/index.js'
 import { matches, matchParticipants, riotAccounts } from '../db/schema.js'
-import { getMatchIdsByPuuid, getMatch, getAccountByPuuid } from '../services/riot.js'
+import { getMatchIdsByPuuid, getMatch, getAccountByPuuid, getSummonerByPuuid, getLeagueEntries } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 export interface SyncMatchesJobData {
@@ -51,9 +51,12 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
         where: eq(riotAccounts.puuid, p.puuid),
       })
 
-      // Fetch Riot ID (gameName#tagLine) for this participant
+      // Fetch Riot ID and rank for this participant
       let gameName: string | null = account?.gameName ?? null
       let tagLine: string | null = account?.tagLine ?? null
+      let soloTier: string | null = account?.soloTier ?? null
+      let soloRank: string | null = account?.soloRank ?? null
+
       if (!gameName || !tagLine) {
         try {
           const riotId = await getAccountByPuuid(p.puuid)
@@ -61,6 +64,18 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
           tagLine = riotId.tagLine
         } catch {
           // Non-fatal: fall back to champion name on the frontend
+        }
+      }
+
+      if (!soloTier && tagLine) {
+        try {
+          const summoner = await getSummonerByPuuid(p.puuid, tagLine)
+          const entries = await getLeagueEntries(summoner.id, tagLine)
+          const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5')
+          soloTier = solo?.tier ?? null
+          soloRank = solo?.rank ?? null
+        } catch {
+          // Non-fatal
         }
       }
 
@@ -72,6 +87,8 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
           riotAccountId: account?.id ?? null,
           gameName,
           tagLine,
+          soloTier,
+          soloRank,
           championName: p.championName,
           teamId: p.teamId,
           win: p.win,

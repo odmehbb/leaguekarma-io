@@ -90,3 +90,19 @@ export async function getMatch(matchId: string): Promise<Match> {
     `${config.riotRegionalBaseUrl}/lol/match/v5/matches/${matchId}`
   )
 }
+
+export interface LeagueEntry {
+  queueType: string
+  tier: string
+  rank: string
+  leaguePoints: number
+  wins: number
+  losses: number
+}
+
+export async function getLeagueEntries(summonerId: string, tagLine: string): Promise<LeagueEntry[]> {
+  const platformUrl = platformUrlForTag(tagLine)
+  return riotFetch<LeagueEntry[]>(
+    `${platformUrl}/lol/league/v4/entries/by-summoner/${summonerId}`
+  )
+}

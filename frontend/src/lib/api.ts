@@ -10,6 +10,7 @@ export const getMe = () => api.get('/auth/me').then((r) => r.data)
 export const logout = () => api.post('/auth/logout').then((r) => r.data)
 export const linkRiot = (gameName: string, tagLine: string) =>
   api.post('/auth/link-riot', { gameName, tagLine }).then((r) => r.data)
+export const syncMatches = () => api.post('/auth/sync').then((r) => r.data)
 
 // Player
 export const getPlayerProfile = (gameName: string, tagLine: string) =>
@@ -22,6 +23,10 @@ export const getSharedMatches = (gameName: string, tagLine: string) =>
 // Reviews
 export const getMyReviews = (gameName: string, tagLine: string) =>
   api.get(`/player/${gameName}/${tagLine}/my-reviews`).then((r) => r.data)
+export const getPublicReviews = (gameName: string, tagLine: string) =>
+  api.get(`/player/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}/public-reviews`).then((r) => r.data)
+export const getReviewsGiven = () =>
+  api.get('/player/reviews/given').then((r) => r.data)
 export const submitReview = (
   gameName: string,
   tagLine: string,
@@ -42,3 +47,7 @@ export const getMatchParticipants = (riotMatchId: string) =>
 
 // Rankings
 export const getRankings = () => api.get('/rankings').then((r) => r.data)
+
+// Stats & Activity
+export const getStats = () => api.get('/stats').then((r) => r.data)
+export const getActivity = () => api.get('/activity').then((r) => r.data)

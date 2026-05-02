@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db } from '../db/index.js'
 import { reviews, riotAccounts, matchParticipants, matches } from '../db/schema.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, desc, ilike } from 'drizzle-orm'
 
 const VALID_TAGS = [
   'great-comms',
@@ -129,6 +129,53 @@ export async function reviewRoutes(app: FastifyInstance) {
       })
 
       reply.send(myReviews)
+    }
+  )
+
+  // GET /api/player/reviews/given — reviews the current user has written
+  app.get(
+    '/reviews/given',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const { userId } = req.user as { userId: string }
+      const myAccount = await db.query.riotAccounts.findFirst({
+        where: eq(riotAccounts.userId, userId),
+      })
+      if (!myAccount) return reply.send([])
+
+      const givenReviews = await db.query.reviews.findMany({
+        where: eq(reviews.reviewerAccountId, myAccount.id),
+        orderBy: [desc(reviews.createdAt)],
+        limit: 30,
+      })
+
+      const enriched = await Promise.all(
+        givenReviews.map(async (r) => {
+          const account = await db.query.riotAccounts.findFirst({
+            where: eq(riotAccounts.puuid, r.subjectPuuid),
+          })
+          let gameName = account?.gameName ?? null
+          let tagLine = account?.tagLine ?? null
+          if (!gameName) {
+            const p = await db.query.matchParticipants.findFirst({
+              where: eq(matchParticipants.puuid, r.subjectPuuid),
+            })
+            gameName = p?.gameName ?? null
+            tagLine = p?.tagLine ?? null
+          }
+          return {
+            id: r.id,
+            subjectPuuid: r.subjectPuuid,
+            subjectGameName: gameName,
+            subjectTagLine: tagLine,
+            tags: r.tags,
+            note: r.note,
+            createdAt: r.createdAt,
+          }
+        })
+      )
+
+      reply.send(enriched.filter((r) => r.subjectGameName))
     }
   )
 
