@@ -34,6 +34,7 @@ export async function activityRoutes(app: FastifyInstance) {
           subjectGameName: gameName,
           subjectTagLine: tagLine,
           tags: r.tags,
+          note: r.note,
           positive,
           createdAt: r.createdAt,
         }

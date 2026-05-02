@@ -16,6 +16,7 @@ type ActivityItem = {
   subjectGameName: string
   subjectTagLine: string
   tags: string[]
+  note?: string | null
   positive: boolean
   createdAt: string
 }
@@ -210,6 +211,9 @@ export default function SearchPage() {
                         </Badge>
                       ))}
                     </div>
+                    {item.note && (
+                      <p className="text-[11px] text-muted italic mt-1 truncate">"{item.note}"</p>
+                    )}
                   </div>
                   <span className="text-[10px] text-muted shrink-0 mt-0.5">{timeAgo(item.createdAt)}</span>
                 </div>
