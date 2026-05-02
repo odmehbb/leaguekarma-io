@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-karma-dark text-white min-h-screen;
+@layer base {
+  body {
+    background-color: #0A1128;
+    color: #f3f4f6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }

@@ -8,6 +8,20 @@
       "when": 1777742902562,
       "tag": "0000_mixed_random",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777748567721,
+      "tag": "0001_complex_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777758811435,
+      "tag": "0002_jazzy_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

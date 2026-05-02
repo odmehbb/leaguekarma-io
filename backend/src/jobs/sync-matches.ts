@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq'
 import { db } from '../db/index.js'
 import { matches, matchParticipants, riotAccounts } from '../db/schema.js'
-import { getMatchIdsByPuuid, getMatch } from '../services/riot.js'
+import { getMatchIdsByPuuid, getMatch, getAccountByPuuid } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 export interface SyncMatchesJobData {
@@ -51,12 +51,27 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
         where: eq(riotAccounts.puuid, p.puuid),
       })
 
+      // Fetch Riot ID (gameName#tagLine) for this participant
+      let gameName: string | null = account?.gameName ?? null
+      let tagLine: string | null = account?.tagLine ?? null
+      if (!gameName || !tagLine) {
+        try {
+          const riotId = await getAccountByPuuid(p.puuid)
+          gameName = riotId.gameName
+          tagLine = riotId.tagLine
+        } catch {
+          // Non-fatal: fall back to champion name on the frontend
+        }
+      }
+
       await db
         .insert(matchParticipants)
         .values({
           matchId: match.id,
           puuid: p.puuid,
           riotAccountId: account?.id ?? null,
+          gameName,
+          tagLine,
           championName: p.championName,
           teamId: p.teamId,
           win: p.win,

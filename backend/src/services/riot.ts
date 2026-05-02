@@ -56,9 +56,26 @@ export async function getAccountByRiotId(gameName: string, tagLine: string): Pro
   )
 }
 
-export async function getSummonerByPuuid(puuid: string): Promise<Summoner> {
+export async function getAccountByPuuid(puuid: string): Promise<RiotAccount> {
+  return riotFetch<RiotAccount>(
+    `${config.riotRegionalBaseUrl}/riot/account/v1/accounts/by-puuid/${puuid}`
+  )
+}
+
+// Map tagLine to platform base URL
+function platformUrlForTag(tagLine: string): string {
+  const tag = tagLine.toUpperCase()
+  if (tag === 'EUNE' || tag === 'EUN1') return 'https://eun1.api.riotgames.com'
+  if (tag === 'TR' || tag === 'TR1') return 'https://tr1.api.riotgames.com'
+  if (tag === 'RU') return 'https://ru.api.riotgames.com'
+  // Default EUW
+  return config.riotPlatformBaseUrl
+}
+
+export async function getSummonerByPuuid(puuid: string, tagLine: string): Promise<Summoner> {
+  const platformUrl = platformUrlForTag(tagLine)
   return riotFetch<Summoner>(
-    `${config.riotPlatformBaseUrl}/lol/summoner/v4/summoners/by-puuid/${puuid}`
+    `${platformUrl}/lol/summoner/v4/summoners/by-puuid/${puuid}`
   )
 }
 

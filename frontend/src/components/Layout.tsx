@@ -1,42 +1,59 @@
-import { Outlet, Link } from 'react-router-dom'
+import { Outlet, NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { Button } from './ui/Button'
+import { cn } from '../lib/utils'
 
 export default function Layout() {
   const { user, isLoading, login, logout } = useAuth()
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-karma-border bg-karma-surface">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="text-karma-gold font-bold text-lg tracking-tight">
-            leaguekarma<span className="text-white">.io</span>
+          <Link to="/" className="font-bold text-xl tracking-tight text-gold hover:text-gold-light transition-colors">
+            leaguekarma.io
           </Link>
 
-          <nav className="flex items-center gap-4">
-            <Link to="/" className="text-sm text-gray-400 hover:text-white transition-colors">
+          <nav className="flex items-center gap-3">
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                cn(
+                  'text-sm transition-colors',
+                  isActive ? 'text-gold' : 'text-muted hover:text-gray-100'
+                )
+              }
+            >
               Search
-            </Link>
+            </NavLink>
+
             {user && (
-              <Link to="/dashboard" className="text-sm text-gray-400 hover:text-white transition-colors">
+              <NavLink
+                to="/dashboard"
+                className={({ isActive }) =>
+                  cn(
+                    'text-sm transition-colors',
+                    isActive ? 'text-gold' : 'text-muted hover:text-gray-100'
+                  )
+                }
+              >
                 Dashboard
-              </Link>
+              </NavLink>
             )}
+
             {!isLoading && (
-              user ? (
-                <button
-                  onClick={logout}
-                  className="text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  Sign out
-                </button>
-              ) : (
-                <button
-                  onClick={login}
-                  className="bg-karma-gold text-karma-dark text-sm font-semibold px-4 py-1.5 rounded hover:opacity-90 transition-opacity"
-                >
-                  Sign in
-                </button>
-              )
+              <div className="ml-1">
+                {user ? (
+                  <Button variant="ghost" size="sm" onClick={logout}>
+                    Sign out
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={login}>
+                    Sign in
+                  </Button>
+                )}
+              </div>
             )}
           </nav>
         </div>
@@ -46,8 +63,10 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-karma-border py-4 text-center text-xs text-gray-600">
-        leaguekarma.io is not affiliated with Riot Games
+      <footer className="border-t border-border py-6 mt-8">
+        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted">
+          leaguekarma.io — not affiliated with Riot Games
+        </div>
       </footer>
     </div>
   )

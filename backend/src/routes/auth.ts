@@ -92,7 +92,7 @@ export async function authRoutes(app: FastifyInstance) {
       .parse(req.body)
 
     const riotAccount = await getAccountByRiotId(gameName, tagLine)
-    const summoner = await getSummonerByPuuid(riotAccount.puuid)
+    const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine)
 
     const existing = await db.query.riotAccounts.findFirst({
       where: eq(riotAccounts.userId, userId),

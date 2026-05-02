@@ -1,0 +1,1 @@
+ALTER TABLE "riot_accounts" ADD CONSTRAINT "riot_accounts_user_id_unique" UNIQUE("user_id");
