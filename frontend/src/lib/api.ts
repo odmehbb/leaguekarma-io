@@ -27,6 +27,14 @@ export const submitReview = (
   tagLine: string,
   body: { matchId: string; tags: string[]; note?: string }
 ) => api.post(`/player/${gameName}/${tagLine}/reviews`, body).then((r) => r.data)
+export const submitReviewByPuuid = (body: {
+  subjectPuuid: string
+  matchId: string
+  tags: string[]
+  note?: string
+}) => api.post('/player/reviews/by-puuid', body).then((r) => r.data)
+export const getMyMatchReviews = (matchId: string) =>
+  api.get(`/player/reviews/my-match-reviews/${matchId}`).then((r) => r.data)
 
 // Match
 export const getMatchParticipants = (riotMatchId: string) =>

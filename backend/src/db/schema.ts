@@ -22,6 +22,7 @@ export const riotAccounts = pgTable('riot_accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
+    .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
   puuid: text('puuid').notNull().unique(),
   gameName: text('game_name').notNull(),
@@ -52,6 +53,8 @@ export const matchParticipants = pgTable(
     riotAccountId: uuid('riot_account_id').references(() => riotAccounts.id, {
       onDelete: 'set null',
     }),
+    gameName: text('game_name'),
+    tagLine: text('tag_line'),
     championName: text('champion_name').notNull(),
     teamId: integer('team_id').notNull(),
     win: boolean('win').notNull(),

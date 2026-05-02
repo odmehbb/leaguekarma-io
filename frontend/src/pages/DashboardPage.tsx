@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getMe, linkRiot, getPlayerMatches } from '../lib/api'
+import { getMe, linkRiot, getPlayerMatches, getPlayerProfile } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
-import MatchCard from '../components/MatchCard'
+import MatchCard, { type MatchData } from '../components/MatchCard'
+import KarmaSummary from '../components/KarmaSummary'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { Badge } from '../components/ui/Badge'
+import { ExternalLink } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth()
@@ -26,11 +32,17 @@ export default function DashboardPage() {
     enabled: !!riotAccount,
   })
 
+  const { data: myProfile } = useQuery({
+    queryKey: ['player', riotAccount?.gameName, riotAccount?.tagLine],
+    queryFn: () => getPlayerProfile(riotAccount!.gameName, riotAccount!.tagLine),
+    enabled: !!riotAccount,
+  })
+
   const linkMutation = useMutation({
     mutationFn: () => {
       const [gameName, tagLine] = riotInput.split('#')
-      if (!gameName || !tagLine) throw new Error('Use format: PlayerName#TAG')
-      return linkRiot(gameName, tagLine)
+      if (!gameName?.trim() || !tagLine?.trim()) throw new Error('Use format: PlayerName#TAG')
+      return linkRiot(gameName.trim(), tagLine.trim())
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] })
@@ -41,88 +53,140 @@ export default function DashboardPage() {
     },
   })
 
-  if (isLoading) return <div className="text-gray-500">Loading…</div>
+  if (isLoading) {
+    return <div className="h-32 bg-surface rounded-lg animate-pulse" />
+  }
 
   if (!user) {
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-400 mb-4">Sign in to access your dashboard.</p>
-        <button
-          onClick={() => (window.location.href = '/api/auth/google')}
-          className="bg-karma-gold text-karma-dark font-semibold px-6 py-2.5 rounded-lg hover:opacity-90"
-        >
+      <div className="text-center py-20">
+        <p className="text-muted mb-5">Sign in to access your dashboard.</p>
+        <Button onClick={() => (window.location.href = '/api/auth/google')}>
           Sign in with Google
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">{me?.email}</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-muted text-sm mt-0.5">{me?.email}</p>
+        </div>
+        {riotAccount && (
+          <button
+            onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
+            className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline"
+          >
+            View profile <ExternalLink size={13} />
+          </button>
+        )}
       </div>
 
+      {/* Link Riot account */}
       {!riotAccount ? (
-        <div className="bg-karma-surface border border-karma-border rounded-xl p-6 space-y-4 max-w-sm">
-          <div>
-            <h2 className="text-white font-semibold">Link your Riot account</h2>
-            <p className="text-gray-500 text-sm mt-1">Enter your Riot ID to sync your matches.</p>
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={riotInput}
-              onChange={(e) => setRiotInput(e.target.value)}
-              placeholder="PlayerName#EUW"
-              className="flex-1 bg-karma-dark border border-karma-border rounded-lg px-3 py-2 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-karma-gold"
-            />
-            <button
-              onClick={() => linkMutation.mutate()}
-              disabled={linkMutation.isPending}
-              className="bg-karma-gold text-karma-dark text-sm font-semibold px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-40"
-            >
-              Link
-            </button>
-          </div>
-          {linkError && <p className="text-red-400 text-sm">{linkError}</p>}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="text-white font-semibold">
-                {riotAccount.gameName}#{riotAccount.tagLine}
-              </p>
-              <p className="text-gray-500 text-sm">Level {riotAccount.summonerLevel}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Link your Riot account</CardTitle>
+            <p className="text-muted text-sm">Enter your Riot ID to start syncing matches.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 max-w-sm">
+              <Input
+                value={riotInput}
+                onChange={(e) => setRiotInput(e.target.value)}
+                placeholder="PlayerName#EUW"
+                onKeyDown={(e) => e.key === 'Enter' && linkMutation.mutate()}
+              />
+              <Button
+                onClick={() => linkMutation.mutate()}
+                disabled={linkMutation.isPending}
+              >
+                {linkMutation.isPending ? 'Linking…' : 'Link'}
+              </Button>
             </div>
-            <button
-              onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
-              className="ml-auto text-sm text-karma-gold hover:underline"
-            >
-              View profile →
-            </button>
-          </div>
+            {linkError && <p className="text-negative text-sm mt-2">{linkError}</p>}
+          </CardContent>
+        </Card>
+      ) : (
+        /* Riot account + own karma */
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted uppercase tracking-wider mb-3">Riot Account</p>
+              <p className="text-white font-semibold text-lg">
+                {riotAccount.gameName}
+                <span className="text-muted font-normal">#{riotAccount.tagLine}</span>
+              </p>
+              <p className="text-muted text-sm mt-0.5">Level {riotAccount.summonerLevel}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Your Karma</p>
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-bold text-white">{myProfile?.reviewCount ?? 0}</span>
+                <span className="text-muted text-sm">reviews received</span>
+              </div>
+              {myProfile?.reviewCount > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {Object.entries(myProfile.tagCounts as Record<string, number>)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 3)
+                    .map(([tag, count]) => (
+                      <Badge key={tag} variant="neutral">
+                        {tag} · {count}
+                      </Badge>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
+      {/* Own karma summary */}
+      {riotAccount && myProfile?.reviewCount > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Your Reputation</h2>
+          <Card>
+            <CardContent className="pt-5">
+              <KarmaSummary tagCounts={myProfile?.tagCounts ?? {}} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Recent matches */}
       {myMatches && myMatches.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
             Recent Matches
+            <span className="text-muted font-normal normal-case ml-2 text-xs">(expand to review teammates)</span>
           </h2>
           <div className="space-y-2">
-            {myMatches.map((match: Parameters<typeof MatchCard>[0]['match']) => (
-              <MatchCard key={match.id} match={match} />
+            {myMatches.map((match: MatchData) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                myPuuid={riotAccount?.puuid}
+              />
             ))}
           </div>
         </div>
       )}
 
       {riotAccount && myMatches?.length === 0 && (
-        <p className="text-gray-500 text-sm">
-          Your matches are being synced in the background — check back shortly.
-        </p>
+        <Card>
+          <CardContent className="pt-5 text-center py-10">
+            <p className="text-muted text-sm">Your matches are being synced in the background.</p>
+            <p className="text-muted text-xs mt-1">Check back in a moment.</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
