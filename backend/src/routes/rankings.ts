@@ -46,8 +46,8 @@ export async function rankingsRoutes(app: FastifyInstance) {
     }
 
     reply.send({
-      praised: await enrich(praised.rows as { subject_puuid: string; score: string }[]),
-      reported: await enrich(reported.rows as { subject_puuid: string; score: string }[]),
+      praised: await enrich(praised as unknown as { subject_puuid: string; score: string }[]),
+      reported: await enrich(reported as unknown as { subject_puuid: string; score: string }[]),
     })
   })
 }
