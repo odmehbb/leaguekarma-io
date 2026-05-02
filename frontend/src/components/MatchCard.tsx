@@ -77,6 +77,8 @@ function InlineReview({
       queryClient.invalidateQueries({ queryKey: ['my-match-reviews', matchId] })
       queryClient.invalidateQueries({ queryKey: ['activity'] })
       queryClient.invalidateQueries({ queryKey: ['reviews-given'] })
+      queryClient.invalidateQueries({ queryKey: ['rankings'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
       setSuccess(true)
       setTimeout(onDone, 800)
     },
