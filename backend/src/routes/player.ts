@@ -70,17 +70,21 @@ export async function playerRoutes(app: FastifyInstance) {
     })
 
     const result = participations
-      .map((p) => ({
-        ...p.match,
-        participant: {
-          championName: p.championName,
-          win: p.win,
-          kills: p.kills,
-          deaths: p.deaths,
-          assists: p.assists,
-          role: p.role,
-        },
-      }))
+      .flatMap((p) => {
+        if (!p.match) return []
+        const match = p.match
+        return [{
+          ...match,
+          participant: {
+            championName: p.championName,
+            win: p.win,
+            kills: p.kills,
+            deaths: p.deaths,
+            assists: p.assists,
+            role: p.role,
+          },
+        }]
+      })
       .sort((a, b) => b.gameEndTimestamp.getTime() - a.gameEndTimestamp.getTime())
 
     reply.send(result)
@@ -126,9 +130,12 @@ export async function playerRoutes(app: FastifyInstance) {
 
       reply.send(
         sharedParticipations
-          .map((p) => ({
-            ...p.match,
-            theirParticipant: {
+          .flatMap((p) => {
+            if (!p.match) return []
+            const match = p.match
+            return [{
+              ...match,
+              theirParticipant: {
               championName: p.championName,
               win: p.win,
               kills: p.kills,
@@ -136,7 +143,8 @@ export async function playerRoutes(app: FastifyInstance) {
               assists: p.assists,
               role: p.role,
             },
-          }))
+          }]
+          })
           .sort((a, b) => b.gameEndTimestamp.getTime() - a.gameEndTimestamp.getTime())
       )
     }

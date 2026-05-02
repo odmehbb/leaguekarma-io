@@ -8,6 +8,7 @@ import {
   primaryKey,
   unique,
 } from 'drizzle-orm/pg-core'
+import { relations } from 'drizzle-orm'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -80,6 +81,42 @@ export const reviews = pgTable(
   },
   (t) => [unique().on(t.reviewerAccountId, t.subjectPuuid, t.matchId)]
 )
+
+// Relations
+export const usersRelations = relations(users, ({ one }) => ({
+  riotAccount: one(riotAccounts, {
+    fields: [users.id],
+    references: [riotAccounts.userId],
+  }),
+}))
+
+export const riotAccountsRelations = relations(riotAccounts, ({ one, many }) => ({
+  user: one(users, { fields: [riotAccounts.userId], references: [users.id] }),
+  matchParticipants: many(matchParticipants),
+}))
+
+export const matchesRelations = relations(matches, ({ many }) => ({
+  participants: many(matchParticipants),
+}))
+
+export const matchParticipantsRelations = relations(matchParticipants, ({ one }) => ({
+  match: one(matches, {
+    fields: [matchParticipants.matchId],
+    references: [matches.id],
+  }),
+  riotAccount: one(riotAccounts, {
+    fields: [matchParticipants.riotAccountId],
+    references: [riotAccounts.id],
+  }),
+}))
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  match: one(matches, { fields: [reviews.matchId], references: [matches.id] }),
+  reviewerAccount: one(riotAccounts, {
+    fields: [reviews.reviewerAccountId],
+    references: [riotAccounts.id],
+  }),
+}))
 
 export type User = typeof users.$inferSelect
 export type RiotAccount = typeof riotAccounts.$inferSelect
