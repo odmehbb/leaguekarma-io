@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.local
+*.local
+
+# Frontend build output (served by backend in prod)
+backend/public/
+
+# Drizzle
+drizzle/meta/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
