@@ -75,6 +75,8 @@ function InlineReview({
     mutationFn: () => submitReviewByPuuid({ subjectPuuid, matchId, tags: selectedTags, note: note || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-match-reviews', matchId] })
+      queryClient.invalidateQueries({ queryKey: ['activity'] })
+      queryClient.invalidateQueries({ queryKey: ['reviews-given'] })
       setSuccess(true)
       setTimeout(onDone, 800)
     },
@@ -138,8 +140,13 @@ function InlineReview({
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && selectedTags.length > 0 && !mutation.isPending) {
+              mutation.mutate()
+            }
+          }}
           maxLength={280}
-          placeholder="Optional note…"
+          placeholder="Optional note… (Ctrl+Enter to submit)"
           rows={2}
           className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-white placeholder-muted resize-none focus:outline-none focus:ring-1 focus:ring-gold"
         />

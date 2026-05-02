@@ -252,8 +252,8 @@ export default function PlayerPage() {
       {/* Champion stats */}
       {matches && matches.length >= 3 && (() => {
         const champStats: Record<string, { games: number; wins: number }> = {}
-        for (const m of matches) {
-          const p = (m as MatchData & { participant?: { championName: string; win: boolean } }).participant
+        for (const m of matches as MatchData[]) {
+          const p = m.participant
           if (!p) continue
           if (!champStats[p.championName]) champStats[p.championName] = { games: 0, wins: 0 }
           champStats[p.championName].games++
