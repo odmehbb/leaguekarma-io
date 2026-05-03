@@ -91,8 +91,8 @@ export default function TermsPage() {
               We reserve the right to suspend or terminate accounts that violate these Terms,
               without prior notice. You may request deletion of your account at any time by
               contacting us at{' '}
-              <a href="mailto:contact@leaguekarma.io" className="text-gold hover:underline">
-                contact@leaguekarma.io
+              <a href="mailto:odmehb@gmail.com" className="text-gold hover:underline">
+                odmehb@gmail.com
               </a>.
             </p>
           </Section>
@@ -126,8 +126,8 @@ export default function TermsPage() {
           <Section title="11. Contact">
             <p>
               For questions about these Terms, contact us at{' '}
-              <a href="mailto:contact@leaguekarma.io" className="text-gold hover:underline">
-                contact@leaguekarma.io
+              <a href="mailto:odmehb@gmail.com" className="text-gold hover:underline">
+                odmehb@gmail.com
               </a>.
             </p>
           </Section>

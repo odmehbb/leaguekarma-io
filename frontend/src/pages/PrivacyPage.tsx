@@ -28,8 +28,8 @@ export default function PrivacyPage() {
             </p>
             <p>
               For privacy questions or data requests, contact us at{' '}
-              <a href="mailto:contact@leaguekarma.io" className="text-gold hover:underline">
-                contact@leaguekarma.io
+              <a href="mailto:odmehb@gmail.com" className="text-gold hover:underline">
+                odmehb@gmail.com
               </a>.
             </p>
           </Section>
@@ -97,8 +97,8 @@ export default function PrivacyPage() {
             </p>
             <p>
               To request deletion of your data, email us at{' '}
-              <a href="mailto:contact@leaguekarma.io" className="text-gold hover:underline">
-                contact@leaguekarma.io
+              <a href="mailto:odmehb@gmail.com" className="text-gold hover:underline">
+                odmehb@gmail.com
               </a>{' '}
               with subject "Data Deletion Request". We will process requests within 30 days.
             </p>
@@ -113,7 +113,7 @@ export default function PrivacyPage() {
               <li>Object to or restrict processing of your data</li>
               <li>Data portability</li>
             </ul>
-            <p>To exercise any of these rights, contact us at contact@leaguekarma.io.</p>
+            <p>To exercise any of these rights, contact us at odmehb@gmail.com.</p>
           </Section>
 
           <Section title="9. Children's privacy">

@@ -15,10 +15,10 @@ export default function ContactPage() {
             For general inquiries, bug reports, or abuse reports, reach out via email:
           </p>
           <a
-            href="mailto:contact@leaguekarma.io"
+            href="mailto:odmehb@gmail.com"
             className="inline-block text-gold hover:underline font-medium"
           >
-            contact@leaguekarma.io
+            odmehb@gmail.com
           </a>
 
           <div className="border-t border-border pt-4 space-y-2">
