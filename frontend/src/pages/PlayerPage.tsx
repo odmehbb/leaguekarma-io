@@ -7,7 +7,7 @@ import KarmaSummary from '../components/KarmaSummary'
 import MatchCard, { type MatchData } from '../components/MatchCard'
 import { Card, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { TAG_LABELS, POSITIVE_TAGS, timeAgo, championIconUrl } from '../lib/utils'
 
 const TIER_COLORS: Record<string, string> = {
@@ -111,20 +111,20 @@ function ReviewCard({ review, gameName, tagLine }: { review: PublicReview; gameN
             <button
               onClick={() => voteMutation.mutate()}
               disabled={voteMutation.isPending}
-              className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border transition-colors disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors disabled:opacity-50 ${
                 review.myVote
                   ? 'border-gold/60 text-gold bg-gold/10'
                   : 'border-border text-muted hover:border-gold/40 hover:text-gold'
               }`}
-              title={review.myVote ? 'Remove upvote' : 'Upvote'}
+              title={review.myVote ? 'Remove upvote' : 'Helpful'}
             >
-              <ChevronUp size={11} />
+              <ThumbsUp size={11} />
               {review.voteCount > 0 && <span>{review.voteCount}</span>}
             </button>
           )}
           {!user && review.voteCount > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] text-muted">
-              <ChevronUp size={10} />{review.voteCount}
+              <ThumbsUp size={10} />{review.voteCount}
             </span>
           )}
         </div>
