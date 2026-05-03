@@ -64,8 +64,14 @@ export default function Layout() {
       </main>
 
       <footer className="border-t border-border py-6 mt-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted">
-          leaguekarma.io — not affiliated with Riot Games
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted">
+          <span>leaguekarma.io — not affiliated with Riot Games</span>
+          <div className="flex items-center gap-4">
+            <Link to="/about" className="hover:text-white transition-colors">About</Link>
+            <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+          </div>
         </div>
       </footer>
     </div>
