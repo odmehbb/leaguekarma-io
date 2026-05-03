@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { db } from '../db/index.js'
-import { matches, matchParticipants, reviews, riotAccounts } from '../db/schema.js'
+import { matches, matchParticipants, reviews, riotAccounts, reviewVotes } from '../db/schema.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { eq, and, inArray, sql, ilike, desc } from 'drizzle-orm'
+import { eq, and, inArray, sql, ilike, desc, count } from 'drizzle-orm'
 
 export async function playerRoutes(app: FastifyInstance) {
   // GET /api/player/:gameName/:tagLine — public karma profile
@@ -61,9 +61,16 @@ export async function playerRoutes(app: FastifyInstance) {
     })
   })
 
-  // GET /api/player/:gameName/:tagLine/public-reviews — anonymized reviews with notes
+  // GET /api/player/:gameName/:tagLine/public-reviews — anonymized reviews with vote counts
   app.get('/:gameName/:tagLine/public-reviews', async (req, reply) => {
     const { gameName, tagLine } = req.params as { gameName: string; tagLine: string }
+
+    // Try to get current user from cookie (optional auth)
+    let viewerUserId: string | null = null
+    try {
+      await req.jwtVerify()
+      viewerUserId = (req.user as { userId: string }).userId
+    } catch { /* not logged in, that's fine */ }
 
     const account = await db.query.riotAccounts.findFirst({
       where: and(eq(riotAccounts.gameName, gameName), eq(riotAccounts.tagLine, tagLine)),
@@ -82,19 +89,62 @@ export async function playerRoutes(app: FastifyInstance) {
 
     if (!subjectPuuid) return reply.send([])
 
-    const recentReviews = await db.query.reviews.findMany({
-      where: eq(reviews.subjectPuuid, subjectPuuid),
-      orderBy: [desc(reviews.createdAt)],
-      limit: 20,
+    // Only fetch reviews that have notes (the "text feedbacks")
+    const noteReviews = await db.query.reviews.findMany({
+      where: and(
+        eq(reviews.subjectPuuid, subjectPuuid),
+        sql`${reviews.note} IS NOT NULL AND ${reviews.note} != ''`
+      ),
+      with: { votes: true },
+      limit: 50,
     })
 
-    reply.send(
-      recentReviews.map((r) => ({
+    const result = noteReviews
+      .map((r) => ({
+        id: r.id,
         tags: r.tags,
         note: r.note,
         createdAt: r.createdAt,
+        voteCount: r.votes.length,
+        myVote: viewerUserId ? r.votes.some((v) => v.voterUserId === viewerUserId) : false,
       }))
-    )
+      .sort((a, b) => b.voteCount - a.voteCount || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    reply.send(result)
+  })
+
+  // POST /api/player/reviews/:reviewId/vote — toggle upvote (auth required)
+  app.post('/reviews/:reviewId/vote', { preHandler: requireAuth }, async (req, reply) => {
+    const { reviewId } = req.params as { reviewId: string }
+    const { userId } = req.user as { userId: string }
+
+    const review = await db.query.reviews.findFirst({ where: eq(reviews.id, reviewId) })
+    if (!review) return reply.code(404).send({ error: 'Review not found' })
+
+    // Cannot vote on reviews for yourself
+    // (check if subject is the current user)
+    const myAccount = await db.query.riotAccounts.findFirst({
+      where: eq(riotAccounts.userId, userId),
+    })
+    if (myAccount && review.subjectPuuid === myAccount.puuid) {
+      return reply.code(400).send({ error: 'Cannot vote on your own reviews' })
+    }
+
+    const existing = await db.query.reviewVotes.findFirst({
+      where: and(eq(reviewVotes.reviewId, reviewId), eq(reviewVotes.voterUserId, userId)),
+    })
+
+    if (existing) {
+      // Unvote
+      await db.delete(reviewVotes).where(eq(reviewVotes.id, existing.id))
+      const [{ voteCount }] = await db.select({ voteCount: count() }).from(reviewVotes).where(eq(reviewVotes.reviewId, reviewId))
+      return reply.send({ voted: false, voteCount })
+    } else {
+      // Vote
+      await db.insert(reviewVotes).values({ reviewId, voterUserId: userId })
+      const [{ voteCount }] = await db.select({ voteCount: count() }).from(reviewVotes).where(eq(reviewVotes.reviewId, reviewId))
+      return reply.send({ voted: true, voteCount })
+    }
   })
 
   // GET /api/player/:gameName/:tagLine/matches

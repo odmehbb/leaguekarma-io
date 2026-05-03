@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getPlayerProfile, getPlayerMatches, getMe, getPublicReviews } from '../lib/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getPlayerProfile, getPlayerMatches, getMe, getPublicReviews, voteReview } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import KarmaSummary from '../components/KarmaSummary'
 import MatchCard, { type MatchData } from '../components/MatchCard'
 import { Card, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown, ChevronUp } from 'lucide-react'
 import { TAG_LABELS, POSITIVE_TAGS, timeAgo, championIconUrl } from '../lib/utils'
 
 const TIER_COLORS: Record<string, string> = {
@@ -65,8 +65,27 @@ function ShareButton({ gameName, tagLine }: { gameName: string; tagLine: string 
 
 const POSITIVE_TAG_SET = new Set(POSITIVE_TAGS as readonly string[])
 
-function ReviewCard({ review }: { review: { tags: string[]; note?: string | null; createdAt: string } }) {
+type PublicReview = {
+  id: string
+  tags: string[]
+  note?: string | null
+  createdAt: string
+  voteCount: number
+  myVote: boolean
+}
+
+function ReviewCard({ review, gameName, tagLine }: { review: PublicReview; gameName: string; tagLine: string }) {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
   const isPositive = review.tags.some((t) => POSITIVE_TAG_SET.has(t))
+
+  const voteMutation = useMutation({
+    mutationFn: () => voteReview(review.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['public-reviews', gameName, tagLine] })
+    },
+  })
+
   return (
     <div className={`rounded-lg border p-3.5 space-y-2 ${isPositive ? 'border-positive/20 bg-positive/5' : 'border-negative/20 bg-negative/5'}`}>
       <div className="flex items-center justify-between gap-2">
@@ -86,7 +105,29 @@ function ReviewCard({ review }: { review: { tags: string[]; note?: string | null
             ))}
           </div>
         </div>
-        <span className="text-[10px] text-muted shrink-0">{timeAgo(review.createdAt)}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[10px] text-muted">{timeAgo(review.createdAt)}</span>
+          {user && (
+            <button
+              onClick={() => voteMutation.mutate()}
+              disabled={voteMutation.isPending}
+              className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border transition-colors disabled:opacity-50 ${
+                review.myVote
+                  ? 'border-gold/60 text-gold bg-gold/10'
+                  : 'border-border text-muted hover:border-gold/40 hover:text-gold'
+              }`}
+              title={review.myVote ? 'Remove upvote' : 'Upvote'}
+            >
+              <ChevronUp size={11} />
+              {review.voteCount > 0 && <span>{review.voteCount}</span>}
+            </button>
+          )}
+          {!user && review.voteCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-muted">
+              <ChevronUp size={10} />{review.voteCount}
+            </span>
+          )}
+        </div>
       </div>
       {review.note && (
         <p className="text-xs text-gray-300 italic leading-relaxed pl-5">"{review.note}"</p>
@@ -142,9 +183,7 @@ export default function PlayerPage() {
   const myPuuid = me?.riotAccount?.puuid
   const isSelf = myPuuid && profile?.account?.puuid === myPuuid
 
-  // Separate reviews with notes from those without
-  const reviewsWithNotes = (publicReviews ?? []).filter((r: { note?: string | null }) => r.note)
-  const allReviews = publicReviews ?? []
+  const allReviews: PublicReview[] = publicReviews ?? []
 
   return (
     <div className="space-y-8">
@@ -237,14 +276,12 @@ export default function PlayerPage() {
         <div>
           <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
             What People Say
-            <span className="text-muted font-normal normal-case ml-2 text-xs">— anonymous</span>
+            <span className="text-muted font-normal normal-case ml-2 text-xs">— anonymous · upvote the best ones</span>
           </h2>
           <div className="space-y-2">
-            {(reviewsWithNotes.length > 0 ? reviewsWithNotes : allReviews.slice(0, 5)).map(
-              (review: { tags: string[]; note?: string | null; createdAt: string }, i: number) => (
-                <ReviewCard key={i} review={review} />
-              )
-            )}
+            {allReviews.map((review) => (
+              <ReviewCard key={review.id} review={review} gameName={gameName!} tagLine={tagLine!} />
+            ))}
           </div>
         </div>
       )}
