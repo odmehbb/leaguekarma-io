@@ -5,7 +5,8 @@ const headers = { 'X-Riot-Token': config.riotApiKey }
 async function riotFetch<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers })
   if (!res.ok) {
-    throw new Error(`Riot API error ${res.status}: ${url}`)
+    const body = await res.text().catch(() => '')
+    throw new Error(`Riot API error ${res.status}: ${url} — ${body}`)
   }
   return res.json() as Promise<T>
 }
