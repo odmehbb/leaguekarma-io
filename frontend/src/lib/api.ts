@@ -54,7 +54,3 @@ export const getRankings = () => api.get('/rankings').then((r) => r.data)
 export const getStats = () => api.get('/stats').then((r) => r.data)
 export const getActivity = () => api.get('/activity').then((r) => r.data)
 
-
-// Riot verification
-export const getVerificationCode = () => api.get('/auth/verification-code').then((r) => r.data as { code: string; verified: boolean })
-export const verifyRiotAccount = () => api.post('/auth/verify-riot').then((r) => r.data as { verified: boolean; error?: string })
