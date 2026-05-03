@@ -8,7 +8,8 @@ import { redis } from '../redis/index.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { syncMatchesQueue } from '../jobs/queue.js'
 import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
+import { matchParticipants, reviews } from '../db/schema.js'
 
 const google = new Google(
   config.googleClientId,
@@ -138,10 +139,16 @@ export async function authRoutes(app: FastifyInstance) {
       })
       .returning()
 
+    // If the PUUID changed (new API key), cascade the update to match history and reviews
+    if (existing && existing.puuid !== account.puuid) {
+      await db.execute(sql`UPDATE match_participants SET puuid = ${account.puuid} WHERE puuid = ${existing.puuid}`)
+      await db.execute(sql`UPDATE reviews SET subject_puuid = ${account.puuid} WHERE subject_puuid = ${existing.puuid}`)
+    }
+
     await syncMatchesQueue.add('sync', {
       riotAccountId: account.id,
       puuid: account.puuid,
-      isFirstSync,
+      isFirstSync: isFirstSync || (!!existing && existing.puuid !== account.puuid),
     })
 
     reply.send(account)
