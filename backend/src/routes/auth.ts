@@ -173,6 +173,11 @@ export async function authRoutes(app: FastifyInstance) {
     reply.send({ ok: true })
   })
 
+  // POST /api/auth/verify-riot — placeholder until RSO (Riot Sign-On) OAuth is configured
+  app.post('/verify-riot', { preHandler: requireAuth }, async (_req, reply) => {
+    reply.code(501).send({ error: 'Riot account verification via RSO is not yet available.' })
+  })
+
   // POST /api/auth/logout
   app.post('/logout', { preHandler: requireAuth }, async (_req, reply) => {
     reply.clearCookie('token', { path: '/' }).send({ ok: true })

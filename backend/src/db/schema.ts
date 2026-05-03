@@ -36,6 +36,8 @@ export const riotAccounts = pgTable('riot_accounts', {
   soloWins: integer('solo_wins'),
   soloLosses: integer('solo_losses'),
   lastSyncedAt: timestamp('last_synced_at'),
+  verificationCode: text('verification_code'),
+  verified: boolean('verified').notNull().default(false),
 })
 
 export const matches = pgTable('matches', {
