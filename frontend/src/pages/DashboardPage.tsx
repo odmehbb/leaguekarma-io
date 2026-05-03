@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getMe, linkRiot, getPlayerMatches, getPlayerProfile, getReviewsGiven, syncMatches } from '../lib/api'
@@ -64,17 +64,36 @@ export default function DashboardPage() {
     enabled: !!riotAccount,
   })
 
-  const [syncMessage, setSyncMessage] = useState('')
+  const SYNC_COOLDOWN_MS = 5 * 60 * 1000
+  const SYNC_KEY = 'leaguekarma:last-sync'
+
+  const [syncCooldownLeft, setSyncCooldownLeft] = useState(() => {
+    const last = parseInt(localStorage.getItem(SYNC_KEY) ?? '0', 10)
+    return Math.max(0, SYNC_COOLDOWN_MS - (Date.now() - last))
+  })
+
+  useEffect(() => {
+    if (syncCooldownLeft <= 0) return
+    const interval = setInterval(() => {
+      const last = parseInt(localStorage.getItem(SYNC_KEY) ?? '0', 10)
+      const left = Math.max(0, SYNC_COOLDOWN_MS - (Date.now() - last))
+      setSyncCooldownLeft(left)
+      if (left === 0) clearInterval(interval)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [syncCooldownLeft])
+
   const syncMutation = useMutation({
     mutationFn: syncMatches,
     onSuccess: () => {
-      setSyncMessage('Sync queued! Matches may take a moment to appear.')
+      localStorage.setItem(SYNC_KEY, Date.now().toString())
+      setSyncCooldownLeft(SYNC_COOLDOWN_MS)
       queryClient.invalidateQueries({ queryKey: ['me'] })
-      setTimeout(() => setSyncMessage(''), 5000)
     },
-    onError: (err: { response?: { data?: { error?: string } } }) => {
-      setSyncMessage(err?.response?.data?.error ?? 'Sync failed')
-      setTimeout(() => setSyncMessage(''), 5000)
+    onError: () => {
+      // If backend says still on cooldown, sync the local timer too
+      localStorage.setItem(SYNC_KEY, Date.now().toString())
+      setSyncCooldownLeft(SYNC_COOLDOWN_MS)
     },
   })
 
@@ -127,12 +146,16 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white border border-border hover:border-gold/40 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-50"
-                title="Sync recent matches"
+                disabled={syncMutation.isPending || syncCooldownLeft > 0}
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white border border-border hover:border-gold/40 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title={syncCooldownLeft > 0 ? `Available in ${Math.ceil(syncCooldownLeft / 1000)}s` : 'Sync recent matches'}
               >
                 <RefreshCw size={12} className={syncMutation.isPending ? 'animate-spin' : ''} />
-                {syncMutation.isPending ? 'Syncing…' : 'Sync'}
+                {syncMutation.isPending
+                  ? 'Syncing…'
+                  : syncCooldownLeft > 0
+                  ? `${Math.ceil(syncCooldownLeft / 1000)}s`
+                  : 'Sync'}
               </button>
               <button
                 onClick={() => navigate(`/player/${riotAccount.gameName}/${riotAccount.tagLine}`)}
@@ -141,9 +164,6 @@ export default function DashboardPage() {
                 View profile <ExternalLink size={13} />
               </button>
             </div>
-            {syncMessage && (
-              <p className="text-[11px] text-muted max-w-48 text-right">{syncMessage}</p>
-            )}
           </div>
         )}
       </div>
