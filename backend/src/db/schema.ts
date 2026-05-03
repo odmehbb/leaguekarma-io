@@ -92,6 +92,21 @@ export const reviews = pgTable(
   (t) => [unique().on(t.reviewerAccountId, t.subjectPuuid, t.matchId)]
 )
 
+export const reviewVotes = pgTable(
+  'review_votes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reviewId: uuid('review_id')
+      .notNull()
+      .references(() => reviews.id, { onDelete: 'cascade' }),
+    voterUserId: uuid('voter_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.reviewId, t.voterUserId)]
+)
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   riotAccount: one(riotAccounts, {
@@ -120,12 +135,18 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
   }),
 }))
 
-export const reviewsRelations = relations(reviews, ({ one }) => ({
+export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   match: one(matches, { fields: [reviews.matchId], references: [matches.id] }),
   reviewerAccount: one(riotAccounts, {
     fields: [reviews.reviewerAccountId],
     references: [riotAccounts.id],
   }),
+  votes: many(reviewVotes),
+}))
+
+export const reviewVotesRelations = relations(reviewVotes, ({ one }) => ({
+  review: one(reviews, { fields: [reviewVotes.reviewId], references: [reviews.id] }),
+  voter: one(users, { fields: [reviewVotes.voterUserId], references: [users.id] }),
 }))
 
 export type User = typeof users.$inferSelect
@@ -133,3 +154,4 @@ export type RiotAccount = typeof riotAccounts.$inferSelect
 export type Match = typeof matches.$inferSelect
 export type MatchParticipant = typeof matchParticipants.$inferSelect
 export type Review = typeof reviews.$inferSelect
+export type ReviewVote = typeof reviewVotes.$inferSelect

@@ -25,6 +25,8 @@ export const getMyReviews = (gameName: string, tagLine: string) =>
   api.get(`/player/${gameName}/${tagLine}/my-reviews`).then((r) => r.data)
 export const getPublicReviews = (gameName: string, tagLine: string) =>
   api.get(`/player/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}/public-reviews`).then((r) => r.data)
+export const voteReview = (reviewId: string) =>
+  api.post(`/player/reviews/${reviewId}/vote`).then((r) => r.data)
 export const getReviewsGiven = () =>
   api.get('/player/reviews/given').then((r) => r.data)
 export const submitReview = (

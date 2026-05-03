@@ -10,8 +10,8 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="font-bold text-xl tracking-tight text-gold hover:text-gold-light transition-colors">
-            leaguekarma.io
+          <Link to="/" className="font-bold text-xl tracking-tight transition-colors">
+            <span className="text-white">leaguekarma</span><span className="text-gold">.io</span>
           </Link>
 
           <nav className="flex items-center gap-3">
@@ -64,8 +64,14 @@ export default function Layout() {
       </main>
 
       <footer className="border-t border-border py-6 mt-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted">
-          leaguekarma.io — not affiliated with Riot Games
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted">
+          <span>leaguekarma.io — not affiliated with Riot Games</span>
+          <div className="flex items-center gap-4">
+            <Link to="/about" className="hover:text-white transition-colors">About</Link>
+            <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+          </div>
         </div>
       </footer>
     </div>
