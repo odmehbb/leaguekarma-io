@@ -10,8 +10,8 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="font-bold text-xl tracking-tight text-gold hover:text-gold-light transition-colors">
-            leaguekarma.io
+          <Link to="/" className="font-bold text-xl tracking-tight transition-colors">
+            <span className="text-white">leaguekarma</span><span className="text-gold">.io</span>
           </Link>
 
           <nav className="flex items-center gap-3">
