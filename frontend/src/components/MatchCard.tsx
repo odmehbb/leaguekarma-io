@@ -54,6 +54,8 @@ interface Props {
 function InlineReview({
   subjectPuuid,
   subjectName,
+  subjectGameName,
+  subjectTagLine,
   matchId,
   existingTags,
   existingNote,
@@ -61,6 +63,8 @@ function InlineReview({
 }: {
   subjectPuuid: string
   subjectName: string
+  subjectGameName?: string | null
+  subjectTagLine?: string | null
   matchId: string
   existingTags?: string[]
   existingNote?: string
@@ -79,6 +83,10 @@ function InlineReview({
       queryClient.invalidateQueries({ queryKey: ['reviews-given'] })
       queryClient.invalidateQueries({ queryKey: ['rankings'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
+      if (subjectGameName && subjectTagLine) {
+        queryClient.invalidateQueries({ queryKey: ['public-reviews', subjectGameName, subjectTagLine] })
+        queryClient.invalidateQueries({ queryKey: ['player', subjectGameName, subjectTagLine] })
+      }
       setSuccess(true)
       setTimeout(onDone, 800)
     },
@@ -248,6 +256,8 @@ function ParticipantRow({
           <InlineReview
             subjectPuuid={participant.puuid}
             subjectName={displayName}
+            subjectGameName={gameName}
+            subjectTagLine={tagLine}
             matchId={matchId}
             existingTags={existingReview?.tags}
             existingNote={existingReview?.note}

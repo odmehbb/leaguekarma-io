@@ -4,6 +4,28 @@ import { matches, matchParticipants, riotAccounts } from '../db/schema.js'
 import { getMatchIdsByPuuid, getMatch, getAccountByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
+// Rate limit: 100 req/2min hard cap. Track calls in a sliding window and pause when near the limit.
+let _apiCallsThisWindow = 0
+let _windowStart = Date.now()
+const WINDOW_MS = 120_000  // 2 minutes
+const MAX_PER_WINDOW = 90  // 10% headroom under the 100/2min hard limit
+
+async function riotApiCall<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now()
+  if (now - _windowStart >= WINDOW_MS) {
+    _apiCallsThisWindow = 0
+    _windowStart = now
+  }
+  if (_apiCallsThisWindow >= MAX_PER_WINDOW) {
+    const waitMs = WINDOW_MS - (Date.now() - _windowStart) + 200
+    await new Promise((r) => setTimeout(r, waitMs))
+    _apiCallsThisWindow = 0
+    _windowStart = Date.now()
+  }
+  _apiCallsThisWindow++
+  return fn()
+}
+
 export interface SyncMatchesJobData {
   riotAccountId: string
   puuid: string
@@ -16,7 +38,7 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
   const { riotAccountId, puuid, isFirstSync } = job.data
   const count = isFirstSync ? 20 : 5
 
-  const matchIds = await getMatchIdsByPuuid(puuid, count)
+  const matchIds = await riotApiCall(() => getMatchIdsByPuuid(puuid, count))
 
   for (const riotMatchId of matchIds) {
     // Skip if already stored
@@ -25,7 +47,7 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
     })
     if (existing) continue
 
-    const matchData = await getMatch(riotMatchId)
+    const matchData = await riotApiCall(() => getMatch(riotMatchId))
     const info = matchData.info
 
     // Upsert match
@@ -70,7 +92,7 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
 
       if (!gameName || !tagLine) {
         try {
-          const riotId = await getAccountByPuuid(p.puuid)
+          const riotId = await riotApiCall(() => getAccountByPuuid(p.puuid))
           gameName = riotId.gameName
           tagLine = riotId.tagLine
         } catch {
@@ -80,7 +102,7 @@ export async function syncMatchesProcessor(job: Job<SyncMatchesJobData>) {
 
       if (!soloTier && tagLine) {
         try {
-          const entries = await getLeagueEntriesByPuuid(p.puuid, tagLine)
+          const entries = await riotApiCall(() => getLeagueEntriesByPuuid(p.puuid, tagLine!))
           const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5')
           soloTier = solo?.tier ?? null
           soloRank = solo?.rank ?? null
