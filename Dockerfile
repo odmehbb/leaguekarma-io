@@ -21,6 +21,7 @@ WORKDIR /app
 COPY --from=backend-builder /app/backend/dist ./dist
 COPY --from=backend-builder /app/backend/package*.json ./
 COPY --from=backend-builder /app/backend/drizzle ./drizzle
+COPY --from=backend-builder /app/backend/static ./static
 COPY --from=frontend-builder /app/backend/public ./public
 
 RUN npm install --omit=dev
