@@ -97,6 +97,14 @@ export default function DashboardPage() {
     },
   })
 
+  const refreshAccountMutation = useMutation({
+    mutationFn: () => linkRiot(riotAccount!.gameName, riotAccount!.tagLine),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      queryClient.invalidateQueries({ queryKey: ['my-matches', riotAccount?.gameName, riotAccount?.tagLine] })
+    },
+  })
+
   const linkMutation = useMutation({
     mutationFn: () => {
       const [gameName, tagLine] = riotInput.split('#')
@@ -214,6 +222,13 @@ export default function DashboardPage() {
                   Last synced {timeAgo(riotAccount.lastSyncedAt)}
                 </p>
               )}
+              <button
+                onClick={() => refreshAccountMutation.mutate()}
+                disabled={refreshAccountMutation.isPending}
+                className="mt-3 text-xs text-muted hover:text-white transition-colors disabled:opacity-40"
+              >
+                {refreshAccountMutation.isPending ? 'Refreshing…' : refreshAccountMutation.isSuccess ? '✓ Refreshed' : 'Refresh account'}
+              </button>
             </CardContent>
           </Card>
 
