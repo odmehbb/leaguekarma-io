@@ -79,6 +79,14 @@ export async function getSummonerByPuuid(puuid: string, tagLine: string): Promis
   )
 }
 
+// Preferred endpoint: get league entries directly by PUUID (no encrypted summoner ID needed)
+export async function getLeagueEntriesByPuuid(puuid: string, tagLine: string): Promise<LeagueEntry[]> {
+  const platformUrl = platformUrlForTag(tagLine)
+  return riotFetch<LeagueEntry[]>(
+    `${platformUrl}/lol/league/v4/entries/by-puuid/${puuid}`
+  )
+}
+
 export async function getMatchIdsByPuuid(puuid: string, count: number): Promise<string[]> {
   return riotFetch<string[]>(
     `${config.riotRegionalBaseUrl}/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&queue=400&count=${count}`
@@ -88,5 +96,21 @@ export async function getMatchIdsByPuuid(puuid: string, count: number): Promise<
 export async function getMatch(matchId: string): Promise<Match> {
   return riotFetch<Match>(
     `${config.riotRegionalBaseUrl}/lol/match/v5/matches/${matchId}`
+  )
+}
+
+export interface LeagueEntry {
+  queueType: string
+  tier: string
+  rank: string
+  leaguePoints: number
+  wins: number
+  losses: number
+}
+
+export async function getLeagueEntries(summonerId: string, tagLine: string): Promise<LeagueEntry[]> {
+  const platformUrl = platformUrlForTag(tagLine)
+  return riotFetch<LeagueEntry[]>(
+    `${platformUrl}/lol/league/v4/entries/by-summoner/${summonerId}`
   )
 }

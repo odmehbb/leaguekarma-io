@@ -5,6 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  TOP: 'Top',
+  JUNGLE: 'Jungle',
+  MIDDLE: 'Mid',
+  BOTTOM: 'Bot',
+  UTILITY: 'Support',
+}
+export function roleLabel(role: string | null | undefined): string | null {
+  if (!role) return null
+  return ROLE_LABELS[role.toUpperCase()] ?? role
+}
+
+// Data Dragon champion icons — version bumps ~every 2 weeks with patches
+const DDRAGON_VERSION = '16.9.1'
+export function championIconUrl(championName: string) {
+  return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${championName}.png`
+}
+
 export const POSITIVE_TAGS = [
   'great-comms',
   'good-shotcaller',
@@ -63,6 +81,14 @@ export function queueLabel(queueId: number): string {
   if (queueId === 420) return 'Ranked Solo'
   if (queueId === 440) return 'Ranked Flex'
   if (queueId === 400) return 'Normal Draft'
+  if (queueId === 430) return 'Normal Blind'
   if (queueId === 450) return 'ARAM'
-  return 'Custom'
+  if (queueId === 900) return 'URF'
+  if (queueId === 1020) return 'One for All'
+  if (queueId === 1300) return 'Nexus Blitz'
+  if (queueId === 1400) return 'Spellbook'
+  if (queueId === 1700) return 'Arena'
+  if (queueId === 1710) return 'Arena'
+  if (queueId === 0) return 'Custom'
+  return `Mode ${queueId}`
 }

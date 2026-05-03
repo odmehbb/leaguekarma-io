@@ -1,9 +1,27 @@
 import { POSITIVE_TAGS, NEGATIVE_TAGS, TAG_LABELS } from '../lib/utils'
-import { Badge } from './ui/Badge'
 
 interface Props {
   tagCounts: Record<string, number>
   reviewCount?: number
+}
+
+function TagBar({ tag, count, max, variant }: { tag: string; count: number; max: number; variant: 'positive' | 'negative' }) {
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0
+  const barColor = variant === 'positive' ? 'bg-positive' : 'bg-negative'
+  const textColor = variant === 'positive' ? 'text-positive' : 'text-negative'
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-gray-300 w-36 shrink-0 truncate">{TAG_LABELS[tag]}</span>
+      <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`text-xs font-semibold w-5 text-right shrink-0 ${textColor}`}>{count}</span>
+    </div>
+  )
 }
 
 export default function KarmaSummary({ tagCounts, reviewCount }: Props) {
@@ -21,42 +39,39 @@ export default function KarmaSummary({ tagCounts, reviewCount }: Props) {
     )
   }
 
+  const maxPositive = positiveTags.reduce((m, t) => Math.max(m, tagCounts[t] ?? 0), 0)
+  const maxNegative = negativeTags.reduce((m, t) => Math.max(m, tagCounts[t] ?? 0), 0)
+
   return (
-    <div className="grid sm:grid-cols-2 gap-5">
+    <div className="grid sm:grid-cols-2 gap-6">
       <div>
-        <p className="text-xs font-semibold text-positive uppercase tracking-wider mb-2">
+        <p className="text-xs font-semibold text-positive uppercase tracking-wider mb-3">
           Praised for
         </p>
-        <div className="space-y-1.5">
-          {positiveTags.length > 0 ? (
-            positiveTags.map((tag) => (
-              <div key={tag} className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">{TAG_LABELS[tag]}</span>
-                <Badge variant="positive">{tagCounts[tag]}</Badge>
-              </div>
-            ))
-          ) : (
-            <p className="text-muted text-sm">No positive tags yet.</p>
-          )}
-        </div>
+        {positiveTags.length > 0 ? (
+          <div className="space-y-2.5">
+            {positiveTags.map((tag) => (
+              <TagBar key={tag} tag={tag} count={tagCounts[tag] ?? 0} max={maxPositive} variant="positive" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted text-sm">No positive tags yet.</p>
+        )}
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-negative uppercase tracking-wider mb-2">
+        <p className="text-xs font-semibold text-negative uppercase tracking-wider mb-3">
           Reported for
         </p>
-        <div className="space-y-1.5">
-          {negativeTags.length > 0 ? (
-            negativeTags.map((tag) => (
-              <div key={tag} className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">{TAG_LABELS[tag]}</span>
-                <Badge variant="negative">{tagCounts[tag]}</Badge>
-              </div>
-            ))
-          ) : (
-            <p className="text-muted text-sm">No negative tags yet.</p>
-          )}
-        </div>
+        {negativeTags.length > 0 ? (
+          <div className="space-y-2.5">
+            {negativeTags.map((tag) => (
+              <TagBar key={tag} tag={tag} count={tagCounts[tag] ?? 0} max={maxNegative} variant="negative" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted text-sm">No negative tags yet.</p>
+        )}
       </div>
     </div>
   )

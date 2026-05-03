@@ -7,7 +7,7 @@ import { config } from '../config.js'
 import { redis } from '../redis/index.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { syncMatchesQueue } from '../jobs/queue.js'
-import { getAccountByRiotId, getSummonerByPuuid } from '../services/riot.js'
+import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 const google = new Google(
@@ -92,7 +92,11 @@ export async function authRoutes(app: FastifyInstance) {
       .parse(req.body)
 
     const riotAccount = await getAccountByRiotId(gameName, tagLine)
-    const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine)
+    // Fetch summoner data (profileIconId, summonerLevel) — id may be absent on newer accounts
+    const summoner = await getSummonerByPuuid(riotAccount.puuid, tagLine).catch(() => null)
+    // Use direct PUUID endpoint for league entries (no longer need encrypted summoner ID)
+    const entries = await getLeagueEntriesByPuuid(riotAccount.puuid, tagLine).catch(() => [])
+    const solo = entries.find((e) => e.queueType === 'RANKED_SOLO_5x5') ?? null
 
     const existing = await db.query.riotAccounts.findFirst({
       where: eq(riotAccounts.userId, userId),
@@ -107,9 +111,14 @@ export async function authRoutes(app: FastifyInstance) {
         puuid: riotAccount.puuid,
         gameName: riotAccount.gameName,
         tagLine: riotAccount.tagLine,
-        summonerId: summoner.id,
-        profileIconId: summoner.profileIconId,
-        summonerLevel: summoner.summonerLevel,
+        summonerId: summoner?.id ?? null,
+        profileIconId: summoner?.profileIconId ?? null,
+        summonerLevel: summoner?.summonerLevel ?? null,
+        soloTier: solo?.tier ?? null,
+        soloRank: solo?.rank ?? null,
+        soloLp: solo?.leaguePoints ?? null,
+        soloWins: solo?.wins ?? null,
+        soloLosses: solo?.losses ?? null,
       })
       .onConflictDoUpdate({
         target: riotAccounts.userId,
@@ -117,9 +126,14 @@ export async function authRoutes(app: FastifyInstance) {
           puuid: riotAccount.puuid,
           gameName: riotAccount.gameName,
           tagLine: riotAccount.tagLine,
-          summonerId: summoner.id,
-          profileIconId: summoner.profileIconId,
-          summonerLevel: summoner.summonerLevel,
+          summonerId: summoner?.id ?? null,
+          profileIconId: summoner?.profileIconId ?? null,
+          summonerLevel: summoner?.summonerLevel ?? null,
+          soloTier: solo?.tier ?? null,
+          soloRank: solo?.rank ?? null,
+          soloLp: solo?.leaguePoints ?? null,
+          soloWins: solo?.wins ?? null,
+          soloLosses: solo?.losses ?? null,
         },
       })
       .returning()
@@ -131,6 +145,32 @@ export async function authRoutes(app: FastifyInstance) {
     })
 
     reply.send(account)
+  })
+
+  // POST /api/auth/sync — manually trigger match sync for current user
+  app.post('/sync', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as { userId: string }
+    const account = await db.query.riotAccounts.findFirst({
+      where: eq(riotAccounts.userId, userId),
+    })
+    if (!account) return reply.code(400).send({ error: 'No linked Riot account' })
+
+    // Cooldown: 5 minutes between manual syncs
+    if (account.lastSyncedAt) {
+      const msSinceSync = Date.now() - account.lastSyncedAt.getTime()
+      if (msSinceSync < 5 * 60 * 1000) {
+        const secondsLeft = Math.ceil((5 * 60 * 1000 - msSinceSync) / 1000)
+        return reply.code(429).send({ error: `Sync on cooldown. Try again in ${secondsLeft}s.` })
+      }
+    }
+
+    await syncMatchesQueue.add('sync', {
+      riotAccountId: account.id,
+      puuid: account.puuid,
+      isFirstSync: false,
+    })
+
+    reply.send({ ok: true })
   })
 
   // POST /api/auth/logout

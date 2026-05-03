@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { db } from '../db/index.js'
-import { reviews, riotAccounts } from '../db/schema.js'
+import { reviews, riotAccounts, matchParticipants } from '../db/schema.js'
 import { sql, eq } from 'drizzle-orm'
 
 const POSITIVE_TAGS = ['great-comms', 'good-shotcaller', 'positive-attitude', 'carried-us', 'great-teammate']
@@ -28,18 +28,27 @@ export async function rankingsRoutes(app: FastifyInstance) {
       LIMIT 10
     `)
 
-    // Enrich with Riot account info
+    // Enrich with Riot account info, falling back to matchParticipants for unregistered players
     async function enrich(rows: { subject_puuid: string; score: string }[]) {
       return Promise.all(
         rows.map(async (row) => {
           const account = await db.query.riotAccounts.findFirst({
             where: eq(riotAccounts.puuid, row.subject_puuid),
           })
+          let gameName = account?.gameName ?? null
+          let tagLine = account?.tagLine ?? null
+          if (!gameName) {
+            const participant = await db.query.matchParticipants.findFirst({
+              where: eq(matchParticipants.puuid, row.subject_puuid),
+            })
+            gameName = participant?.gameName ?? null
+            tagLine = participant?.tagLine ?? null
+          }
           return {
             puuid: row.subject_puuid,
             score: Number(row.score),
-            gameName: account?.gameName ?? null,
-            tagLine: account?.tagLine ?? null,
+            gameName,
+            tagLine,
           }
         })
       )
