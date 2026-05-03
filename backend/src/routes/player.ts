@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { db } from '../db/index.js'
 import { matches, matchParticipants, reviews, riotAccounts, reviewVotes } from '../db/schema.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { eq, and, inArray, sql, ilike, desc, count } from 'drizzle-orm'
+import { eq, and, inArray, sql, ilike, desc, count, isNotNull, ne } from 'drizzle-orm'
 
 export async function playerRoutes(app: FastifyInstance) {
   // GET /api/player/:gameName/:tagLine — public karma profile
@@ -93,7 +93,8 @@ export async function playerRoutes(app: FastifyInstance) {
     const noteReviews = await db.query.reviews.findMany({
       where: and(
         eq(reviews.subjectPuuid, subjectPuuid),
-        sql`${reviews.note} IS NOT NULL AND ${reviews.note} != ''`
+        isNotNull(reviews.note),
+        ne(reviews.note, '')
       ),
       with: { votes: true },
       limit: 50,
