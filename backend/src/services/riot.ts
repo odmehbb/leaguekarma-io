@@ -89,7 +89,7 @@ export async function getLeagueEntriesByPuuid(puuid: string, tagLine: string): P
 
 export async function getMatchIdsByPuuid(puuid: string, count: number): Promise<string[]> {
   return riotFetch<string[]>(
-    `${config.riotRegionalBaseUrl}/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&queue=400&count=${count}`
+    `${config.riotRegionalBaseUrl}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`
   )
 }
 
