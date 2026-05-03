@@ -7,7 +7,7 @@ import { config } from '../config.js'
 import { redis } from '../redis/index.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { syncMatchesQueue } from '../jobs/queue.js'
-import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntriesByPuuid } from '../services/riot.js'
+import { getAccountByRiotId, getSummonerByPuuid, getLeagueEntriesByPuuid, getThirdPartyCode } from '../services/riot.js'
 import { eq } from 'drizzle-orm'
 
 const google = new Google(
@@ -171,6 +171,62 @@ export async function authRoutes(app: FastifyInstance) {
     })
 
     reply.send({ ok: true })
+  })
+
+  // GET /api/auth/verification-code — generate (or return existing) code for in-client verification
+  app.get('/verification-code', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as { userId: string }
+    const account = await db.query.riotAccounts.findFirst({
+      where: eq(riotAccounts.userId, userId),
+    })
+    if (!account) return reply.code(400).send({ error: 'No linked Riot account' })
+
+    // Reuse existing code or generate a new one
+    let code = account.verificationCode
+    if (!code) {
+      code = crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()
+      await db.update(riotAccounts).set({ verificationCode: code }).where(eq(riotAccounts.id, account.id))
+    }
+
+    reply.send({ code, verified: account.verified })
+  })
+
+  // POST /api/auth/verify-riot — check if player set the code in their League client
+  app.post('/verify-riot', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as { userId: string }
+    const account = await db.query.riotAccounts.findFirst({
+      where: eq(riotAccounts.userId, userId),
+    })
+    if (!account) return reply.code(400).send({ error: 'No linked Riot account' })
+    if (account.verified) return reply.send({ verified: true })
+    if (!account.verificationCode) return reply.code(400).send({ error: 'No verification code generated yet' })
+
+    // Need a summonerId to call the third-party endpoint — fetch it if missing
+    let summonerId = account.summonerId
+    if (!summonerId) {
+      try {
+        const summoner = await getSummonerByPuuid(account.puuid, account.tagLine)
+        summonerId = summoner.id
+        await db.update(riotAccounts).set({ summonerId }).where(eq(riotAccounts.id, account.id))
+      } catch {
+        return reply.code(502).send({ error: 'Could not fetch summoner data from Riot' })
+      }
+    }
+
+    try {
+      const clientCode = await getThirdPartyCode(summonerId, account.tagLine)
+      if (clientCode === account.verificationCode) {
+        await db.update(riotAccounts).set({ verified: true }).where(eq(riotAccounts.id, account.id))
+        return reply.send({ verified: true })
+      }
+      return reply.code(400).send({ verified: false, error: 'Code does not match. Make sure you saved it in the League client.' })
+    } catch (err: unknown) {
+      const status = (err as { message?: string })?.message?.match(/(\d+)/)?.[1]
+      if (status === '404') {
+        return reply.code(400).send({ verified: false, error: 'No verification code found in your League client yet.' })
+      }
+      return reply.code(502).send({ error: 'Riot API error during verification' })
+    }
   })
 
   // POST /api/auth/logout

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getMe, linkRiot, getPlayerMatches, getPlayerProfile, getReviewsGiven, syncMatches } from '../lib/api'
+import { getMe, linkRiot, getPlayerMatches, getPlayerProfile, getReviewsGiven, syncMatches, getVerificationCode, verifyRiotAccount } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import MatchCard, { type MatchData } from '../components/MatchCard'
 import KarmaSummary from '../components/KarmaSummary'
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
-import { ExternalLink, ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react'
+import { ExternalLink, ThumbsUp, ThumbsDown, RefreshCw, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { TAG_LABELS, POSITIVE_TAGS, timeAgo } from '../lib/utils'
 
 const TIER_HEX: Record<string, string> = {
@@ -94,6 +94,22 @@ export default function DashboardPage() {
       // If backend says still on cooldown, sync the local timer too
       localStorage.setItem(SYNC_KEY, Date.now().toString())
       setSyncCooldownLeft(SYNC_COOLDOWN_MS)
+    },
+  })
+
+  const { data: verificationData } = useQuery({
+    queryKey: ['verification-code'],
+    queryFn: getVerificationCode,
+    enabled: !!riotAccount && !riotAccount.verified,
+  })
+
+  const verifyMutation = useMutation({
+    mutationFn: verifyRiotAccount,
+    onSuccess: (data) => {
+      if (data.verified) {
+        queryClient.invalidateQueries({ queryKey: ['me'] })
+        queryClient.invalidateQueries({ queryKey: ['verification-code'] })
+      }
     },
   })
 
@@ -235,6 +251,54 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Verification banner */}
+      {riotAccount && !riotAccount.verified && verificationData && (
+        <Card className="border-gold/30">
+          <CardContent className="pt-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={16} className="text-gold shrink-0" />
+              <p className="text-sm font-semibold text-white">Verify your Riot account <span className="text-muted font-normal text-xs">(optional)</span></p>
+            </div>
+            <p className="text-xs text-muted leading-relaxed">
+              Prove you own <span className="text-white">{riotAccount.gameName}#{riotAccount.tagLine}</span> by setting a code in your League client:
+            </p>
+            <ol className="text-xs text-muted space-y-1 list-decimal list-inside">
+              <li>Open League of Legends and go to <span className="text-white">Settings → Verification</span></li>
+              <li>Paste the code below into the "Third-Party Code" field and save</li>
+              <li>Click <span className="text-white">Verify</span> here</li>
+            </ol>
+            <div className="flex items-center gap-2">
+              <code className="bg-background border border-border rounded px-3 py-1.5 text-sm font-mono text-gold tracking-widest select-all">
+                {verificationData.code}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(verificationData.code)}
+                className="text-xs text-muted hover:text-white transition-colors border border-border rounded px-2 py-1.5"
+              >
+                Copy
+              </button>
+            </div>
+            {verifyMutation.data && !verifyMutation.data.verified && (
+              <p className="text-xs text-negative">{verifyMutation.data.error ?? 'Verification failed — try again after saving the code in the client.'}</p>
+            )}
+            <Button
+              size="sm"
+              onClick={() => verifyMutation.mutate()}
+              disabled={verifyMutation.isPending}
+            >
+              {verifyMutation.isPending ? 'Checking…' : 'Verify'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {riotAccount?.verified && (
+        <div className="flex items-center gap-1.5 text-xs text-positive">
+          <ShieldCheck size={14} />
+          Account verified
         </div>
       )}
 

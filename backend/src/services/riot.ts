@@ -114,3 +114,11 @@ export async function getLeagueEntries(summonerId: string, tagLine: string): Pro
     `${platformUrl}/lol/league/v4/entries/by-summoner/${summonerId}`
   )
 }
+
+// Returns the third-party verification code the player has set in their League client
+export async function getThirdPartyCode(summonerId: string, tagLine: string): Promise<string> {
+  const platformUrl = platformUrlForTag(tagLine)
+  return riotFetch<string>(
+    `${platformUrl}/lol/platform/v4/third-party-code/by-summoner/${summonerId}`
+  )
+}

@@ -7,7 +7,7 @@ import KarmaSummary from '../components/KarmaSummary'
 import MatchCard, { type MatchData } from '../components/MatchCard'
 import { Card, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { ArrowLeft, Copy, Check, MessageSquare, ThumbsUp, ThumbsDown, ShieldCheck } from 'lucide-react'
 import { TAG_LABELS, POSITIVE_TAGS, timeAgo, championIconUrl } from '../lib/utils'
 
 const TIER_COLORS: Record<string, string> = {
@@ -208,6 +208,11 @@ export default function PlayerPage() {
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {profile?.account?.summonerLevel && (
                       <span className="text-xs text-muted">Lvl {profile.account.summonerLevel}</span>
+                    )}
+                    {profile?.account?.verified && (
+                      <span className="inline-flex items-center gap-1 text-xs text-positive">
+                        <ShieldCheck size={12} /> Verified
+                      </span>
                     )}
                     {!profile?.registered && (
                       <span className="text-xs text-muted italic">Not yet registered</span>
