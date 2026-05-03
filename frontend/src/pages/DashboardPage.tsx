@@ -324,10 +324,19 @@ export default function DashboardPage() {
       {/* Recent matches */}
       {myMatches && myMatches.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-            Recent Matches
-            <span className="text-muted font-normal normal-case ml-2 text-xs">(expand to review teammates)</span>
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+              Recent Matches
+              <span className="text-muted font-normal normal-case ml-2 text-xs">(expand to review teammates)</span>
+            </h2>
+            <button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['my-matches', riotAccount?.gameName, riotAccount?.tagLine] })}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white transition-colors"
+            >
+              <RefreshCw size={11} />
+              Refresh
+            </button>
+          </div>
           <div className="space-y-2">
             {myMatches.map((match: MatchData) => (
               <MatchCard
