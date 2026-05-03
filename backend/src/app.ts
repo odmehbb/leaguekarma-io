@@ -43,10 +43,9 @@ export async function buildApp() {
   // Health check
   app.get('/health', async () => ({ status: 'ok' }))
 
-  // Riot Games domain verification
-  app.get('/riot.txt', (_req, reply) => {
-    reply.type('text/plain').send('481e41ba-5d51-42ca-b035-427725ccd6c0')
-  })
+  // Serve static verification files (riot.txt etc.)
+  const staticDir = path.join(__dirname, '..', 'static')
+  await app.register(fastifyStatic, { root: staticDir, prefix: '/', decorateReply: false })
 
   // Serve frontend static files in production
   const publicDir = path.join(__dirname, '..', 'public')
